@@ -2,12 +2,11 @@
 ###
 title: "HTTP/1.1 Request Smuggling Defense using Cryptographic Request Binding"
 abbrev: "HTTP/1.1 Request Binding"
-category: info
+category: std
 
 docname: draft-nygren-httpbis-http11-request-binding-latest
 submissiontype: IETF
-number:
-date:
+wg: httpbis
 consensus: true
 v: 3
 area: WIT
@@ -16,13 +15,6 @@ keyword:
  - HRS
  - Request Smuggling
  - Request Binding
-venue:
-  group: WG
-  type: Working Group
-  mail: WG@example.com
-  arch: https://example.com/WG
-  github: enygren/draft-nygren-httpbis-http11-request-binding
-  latest: https://github.com/enygren/draft-nygren-httpbis-http11-request-binding
 
 author:
  -
@@ -32,10 +24,11 @@ author:
  -
     fullname: Mike Bishop
     organization: Akamai Technologies
-    email: erik+ietf@nygren.org
+    email: mbishop@evequefou.be
 
 normative:
-
+	RFC9110:
+	
 informative:
 
 ...
@@ -48,7 +41,7 @@ HTTP/1.1 Request Binding adds new hop-by-hop request headers that are cryptograp
 
 # Introduction
 
-## Motivation
+## Motivation {#motivation}
 
 HTTP Request Smuggling is a class of desynchronization attack where a malicious endpoint can cause a chain of other endpoints to get confused about HTTP request framing due to attributes of the HTTP/1.1 protocol leading to ambiguities in interpretation and variations in implementation.  For example, if in a flow of:
 
@@ -100,17 +93,17 @@ As these are hop-by-hop headers they are added by the endpoints on the HTTP/1.1 
 
 Clients and Servers MUST NOT exchange Bound-Request and Bound-Response headers unless they have mutually negotiated this protocol, either as described below in {{tls-negotiation}} or via some other out-of-band mechanism. If the Client and Server have negotiated using this protocol, they MUST send a Bound-Request and Bound-Response headers in all requests and responses.
 
-## Request/Response Serials
+## Request/Response Serials {#serials}
 
 The Request Serial ($req\_serial) is a counter starting at 1 for the initial request in an HTTP/1.1 persistent connection, and then incrementing by 1 for each subsequent request. The Response Serial ($resp\_serial) for a response is then reflected back to match the Request Serial from the corresponding request.
 
-## Binding Key
+## Binding Key {#binding-key}
 
 The Binding Key is a binary cryptographic value that is associated with the connection. Below we will refer to the binding key for requests as $req\_key and the binding key for responses as $resp\_key.
 
 With HTTPS over TLS the binding keys MUST be derived as described in {{keying-from-tls-exporters}}.
 
-## Header Specification
+## Header Specification {#header-spec}
 
 The Bound-Request and Bound-Response headers are specified as an integer item (the Serial) followed by a parameter list of items.
 
@@ -141,12 +134,13 @@ In the above:
 * $key is the $req\_key or $resp\_key
 * $serial is the request or response serial as a string
 * $method is the HTTP request method associated with the request
-* $authority is the normalized authority for the request  (as defined in {{HTTP}}) and MUST match the value in the request’s Host header
+* $authority is the normalized authority for the request  (as defined in {{!RFC9110, Section 7.2}}) and MUST match the value in the request’s Host header
 * $response\_code is the response code for the response
 
 For example, the header added to the first request on a connection might be:
 
-Bound-Request: 1; method=POST; authority=[www.example.com](http://www.example.com); binding=:yYwktnfv9Ehgr+pvSTu67FuxxMuyCcb8K7tH9m/yrTE=:
+   Bound-Request: 1; method=POST; authority=www.example.com;
+                  binding=:yYwktnfv9Ehgr+pvSTu67FuxxMuyCcb8K7tH9m/yrTE=:
 
 ## For Discussion: Additional Attributes to Bind?
 
@@ -159,11 +153,11 @@ Some options might include:
 
 Adding in the Host header and Path could additionally defend against Host Confusion and Path Confusion attacks, respectively. Adding more in does add more complexity and has more risks of compatibility issues.
 
-## Client Request Handling
+## Client Request Handling {#client-req-handling}
 
 Clients which have negotiated this protocol MUST add a Bound-Request header with each request they make. If the Client is an Intermediary, it MUST first remove any Bound-Request headers that it received. The $req\_serial MUST start at 1 for the first request on a persistent connection, and MUST be incremented by 1 for each subsequent request.
 
-## Server Request Handling
+## Server Request Handling {#server-req-handling}
 
 Servers which have negotiated this protocol MUST validate the presence and contents of the Bound-Request header prior to processing a request. Any failures MUST be detected early in request processing (such as during request parsing), and servers MUST immediately terminate the connection without returning an error response.
 
@@ -178,7 +172,7 @@ If the server is an intermediary, it MUST remove the Bound-Request header before
 
 When constructing a response to the HTTP request the server MUST add a Bound-Response header with a $resp\_serial matching the $req\_serial of the incoming request. If the Client is an Intermediary, it MUST first remove any Bound-Response headers that it received.
 
-## Client Response Handling
+## Client Response Handling {#client-resp-handling}
 
 Clients which have negotiated this protocol MUST validate the presence and contents of the Bound-Response header prior to processing a response. Any failures MUST be detected early in response processing (such as during response parsing), and clients MUST immediately terminate the connection without processing any data from the response.
 
@@ -188,26 +182,26 @@ Validation checks MUST include:
 * Confirmation that the cryptographic binding hash matches what was expected
 * Confirmation that the $resp\_serial matches the $req\_serial of the request that the response is in-response to.
 * Confirmation that the authority and method match those from the corresponding the request
-* Confirmation that the response\_code matches that from the response (or interim response, as discussed in {{1xx-handling}})
+* Confirmation that the response\_code matches that from the response (or interim response, as discussed in {{handling-1xx}})
 
 
 If the client is an intermediary, it MUST remove the Bound-Response header before constructing a response to the previous-hop.
 
-## Handling 100 Continue and 103 Early Hints
+## Handling 100 Continue and 103 Early Hints {#handling-1xx}
 
 When using 100 Continue and 103 Early Hints, the $req\_serial and $resp\_serial MUST remain the same and match for all interim and final responses. Each interim response MUST contain a Bound-Response header with a response-code parameter matching the response code of the interim response.
 
-## Retrying Requests
+## Retrying Requests {#retry-handling}
 
 Requests which are "retried" MUST be treated no differently than other forms of request with their $req\_serial coming from the order of the request in a persistent connection. If a request is retried over a different connection a new Bound-Request header MUST be reconstructed corresponding to the new connection.
 
-## Handling TLS 1.3 Early Data
+## Handling TLS 1.3 Early Data {#tls13-0rtt}
 
 *TODO: define how this works with TLS 1.3 0RTT as it adds additional wrinkles. While this maybe could be made to work there (eg, using the separate early exporter secret and a distinct space for request\_serials).*
 
 # Use with HTTPS over TLS
 
-## Negotiation
+## Negotiation {#tls-negotiation}
 
 Since the Bound-Request header is hop-by-hop header it is not safe to send unless the client knows that recipient supports it, will process it, and then will remove it. Clients and servers MUST NOT send Bound-Request or Bound-Response headers on connections where they have not negotiated this protocol.
 
@@ -223,7 +217,7 @@ Note that the first two options only support TLS 1.3. It would also be preferabl
 
 Application Protocols (ALPN values) other than "http/1.1" are not supported, and a server MUST NOT negotiate this Request-Binding protocol when negotiating an application protocol other than "http/1.1".
 
-## Key Derivation using TLS Exporters
+## Key Derivation using TLS Exporters {#keying-from-tls-exporters}
 
 The $req\_key and $resp\_key are derived using TLS Exporters.
 
