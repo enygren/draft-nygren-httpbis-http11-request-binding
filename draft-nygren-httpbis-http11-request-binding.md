@@ -10,7 +10,6 @@ wg: httpbis
 consensus: true
 v: 3
 area: WIT
-workgroup: HTTP Working Group
 keyword:
  - HRS
  - Request Smuggling
@@ -35,7 +34,6 @@ normative:
   RFC8174:
   RFC8446:
   RFC8941:
-  RFC8941:
   RFC9110:
   RFC9112:
 
@@ -43,12 +41,7 @@ informative:
   RFC9113:
   RFC9114:
   RFC9261:
-  RFC9261:
   RFC9421:
-  draft-vvv-tls-alps:
-  draft-ietf-tls-tlsflags-15:
-  FIPS198-1:
-  PROXY-PROTOCOL: https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
   I-D.vvv-tls-alps:
   I-D.ietf-tls-tlsflags:
   PROXY:
@@ -72,7 +65,7 @@ HTTP/1.1 Request Binding adds new hop-by-hop request headers that are cryptograp
 
 HTTP Request Smuggling is a class of desynchronization attack where a malicious endpoint can cause a chain of other endpoints to get confused about HTTP request framing due to attributes of the HTTP/1.1 protocol leading to ambiguities in interpretation and variations in implementation.  For example, if in a flow of:
 
-	client => intermediate => origin
+    client => intermediate => origin
 
 the client can send an HTTP request header with two Content-Length headers and a Body that contains a second smuggled HTTP request after one of the content lengths.  If the intermediate and origin interpret the request in different ways, the intermediate might think that there was one request while the origin thinks there are now two requests. Not only would the first request get smuggled past intermediate defenses, if there is a second real request (so a total of three requests if you include the smuggled one) then the intermediary might cache the contents of the smuggled response with the cache key of the third request.  There are nigh-infinite variations on this in HTTP/1.1 with frequent vulnerabilities being found and fixed.
 
@@ -141,7 +134,7 @@ bound_header = bound_header_name ":" serial ";"
 "method=" method ";"
 "authority=" authority ";"
 ("response-code" = response_code ";")?
-           			"binding=" binding_value
+                    "binding=" binding_value
 bound_header_name = "Bound-Request" | "Bound-Response"
 serial = sf-integer
 method = sf-string
@@ -163,7 +156,7 @@ In the above:
 * $method is the HTTP request method associated with the request
 * $authority is the normalized authority for the request  (as defined in {{!RFC9110, Section 7.2}}) and MUST match the value in the request's Host header
 * $response\_code is the response code for the response
-* The binding value construct uses HMAC-SHA256 ({{!RFC2104}} {{FIPS198-1}})
+* The binding value construct uses HMAC-SHA256 ({{!RFC2104}})
 
 For example, the header added to the first request on a connection might be:
 
