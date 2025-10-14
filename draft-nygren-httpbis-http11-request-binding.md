@@ -143,11 +143,11 @@ The `Bound-Request` and `Bound-Response` header fields are specified as an integ
 The ABNF is as follows:
 
 ~~~ abnf
-bound_header      = bound_header_name ":" serial ";"
-                  / "method=" method ";"
-                  / "authority=" authority ";"
-                  / ("response-code" = response_code ";")?
-                  / "binding=" binding_value
+bound_header      = bound_header_name ":" serial ";" OWS
+                    "method=" method ";" OWS
+                    "authority=" authority ";" OWS
+                    ("response-code" = response_code ";" OWS)?
+                    "binding=" binding_value
 bound_header_name = "Bound-Request" | "Bound-Response"
 serial            = sf-integer
 method            = sf-string
