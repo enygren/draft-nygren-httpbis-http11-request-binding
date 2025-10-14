@@ -27,9 +27,36 @@ author:
     email: mbishop@evequefou.be
 
 normative:
-	RFC9110:
-	
+  RFC2104:
+  RFC2119:
+  RFC5705:
+  RFC7301:
+  RFC7627:
+  RFC8174:
+  RFC8446:
+  RFC8941:
+  RFC8941:
+  RFC9110:
+  RFC9112:
+
 informative:
+  RFC9113:
+  RFC9114:
+  RFC9261:
+  RFC9261:
+  RFC9421:
+  draft-vvv-tls-alps:
+  draft-ietf-tls-tlsflags-15:
+  FIPS198-1:
+  PROXY-PROTOCOL: https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+  I-D.vvv-tls-alps:
+  I-D.ietf-tls-tlsflags:
+  PROXY:
+    target: https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
+    title: The PROXY protocol
+    author:
+      organization: HAProxy Technologies
+    date: 2017
 
 ...
 
@@ -49,19 +76,19 @@ HTTP Request Smuggling is a class of desynchronization attack where a malicious 
 
 the client can send an HTTP request header with two Content-Length headers and a Body that contains a second smuggled HTTP request after one of the content lengths.  If the intermediate and origin interpret the request in different ways, the intermediate might think that there was one request while the origin thinks there are now two requests. Not only would the first request get smuggled past intermediate defenses, if there is a second real request (so a total of three requests if you include the smuggled one) then the intermediary might cache the contents of the smuggled response with the cache key of the third request.  There are nigh-infinite variations on this in HTTP/1.1 with frequent vulnerabilities being found and fixed.
 
-While HTTP/2 and HTTP/3 are better, conversions between HTTP versions can also be vectors for vulnerabilities here to creep in. Additionally, a malicious client could force an HTTP/1.1 connection to pollute shared resources (a cache or persistent connection) shared with other clients using newer HTTP protocols. Furthermore, the simplicity of HTTP/1.1 and large legacy code bases mean that there is extensive use of HTTP/1.1 in intermediaries such as reverse proxies in the ecosystem: origins themselves may have a proxy implementation fronting application servers, each of which having distinct HTTP implementations.
+While HTTP/2 and HTTP/3 are better ({{RFC9113}} {{RFC9114}}), conversions between HTTP versions can also be vectors for vulnerabilities here to creep in. Additionally, a malicious client could force an HTTP/1.1 connection to pollute shared resources (a cache or persistent connection) shared with other clients using newer HTTP protocols. Furthermore, the simplicity of HTTP/1.1 and large legacy code bases mean that there is extensive use of HTTP/1.1 in intermediaries such as reverse proxies in the ecosystem: origins themselves may have a proxy implementation fronting application servers, each of which having distinct HTTP implementations.
 
 ## Mitigation Overview
 
-The key concept of this specification is for HTTP/1.1 endpoints (such as an intermediate and an origin) to be able to share information about their state (eg, which request/response they think they’re parsing) in a way that is cryptographically bound to the hop-by-hop TLS connection. Since the attacker has no access to the key used for the cryptographic binding, this allows the endpoints to detect desynchronization and fail out but without needing changes to the HTTP/1.1 protocol itself. This shared key is then used to authenticate newly introduced hop-by-hop headers, binding information in those headers (which includes sequential request/response serial numbers) to the request. In the cases where requests or responses do become desynchronized the bound headers will not match what is expected or will fail to validate.
+The key concept of this specification is for HTTP/1.1 endpoints (such as an intermediate and an origin) to be able to share information about their state (eg, which request/response they think they're parsing) in a way that is cryptographically bound to the hop-by-hop TLS connection. Since the attacker has no access to the key used for the cryptographic binding, this allows the endpoints to detect desynchronization and fail out but without needing changes to the HTTP/1.1 protocol itself. This shared key is then used to authenticate newly introduced hop-by-hop headers, binding information in those headers (which includes sequential request/response serial numbers) to the request. In the cases where requests or responses do become desynchronized the bound headers will not match what is expected or will fail to validate.
 
 While "Request Framing Confusion" attacks (such as HTTP Request Smuggling or HRS) are one of the most common forms of HTTP Processing Discrepancy attacks, other types of attacks such as Host Confusion can also cause problems. This specification focuses on the former, but as it evolves we may be able to extend the approach taken to defend against other forms of attacks such as Host Confusion and Path Confusion, as well as to protect headers added by Intermediaries.
 
 *(FOR DISCUSSION: How broadly do we want to scope this specification? How much do we include here, and how much do we leave hooks to enable future extension?)*
 
-HTTP endpoints communicating HTTPS over TLS use TLS Exporters to obtain the key used for the binding, enabling both endpoints of a connection to securely derive this key out-of-band from the request flow in a way that can’t be tampered with. The use of Request Binding headers is also negotiated during the TLS handshake.
+HTTP endpoints communicating HTTPS over TLS use TLS Exporters to obtain the key used for the binding ({{!RFC8446, Section 7.5}} {{!RFC5705}}), enabling both endpoints of a connection to securely derive this key out-of-band from the request flow in a way that can't be tampered with. The use of Request Binding headers is also negotiated during the TLS handshake.
 
-The key used for the binding is abstracted out, so proprietary implementations not using TLS can distribute the key in some other manner, such as in a preface attribute that could be added to the [PROXY protocol](https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt).
+The key used for the binding is abstracted out, so proprietary implementations not using TLS can distribute the key in some other manner, such as in a preface attribute that could be added to the PROXY protocol {{PROXY}}.
 
 ## Illustrative Example
 
@@ -75,7 +102,7 @@ With the proposed mitigation, the Intermediary augments the first and second req
 
 *(TODO: Add a diagram)*
 
-Request Smuggling is a family of attacks with many variations. This is why it’s necessary to include the request and response binding hop-by-hop headers in both directions, as in some other variations it’s potentially possible for things to get reordered such that an Intermediate making request A with serial=1 might get back a response for a request C with serial=2 and needs to be able to fail on that as well, as well as any wide range of other similar cases of desynchronization.
+Request Smuggling is a family of attacks with many variations. This is why it's necessary to include the request and response binding hop-by-hop headers in both directions, as in some other variations it's potentially possible for things to get reordered such that an Intermediate making request A with serial=1 might get back a response for a request C with serial=2 and needs to be able to fail on that as well, as well as any wide range of other similar cases of desynchronization.
 
 The need for a cryptographic binding to the channel between the Intermediate and Server (eg, with TLS Exporters) is required to prevent the malicious client from including a fake request binding header in what is being smuggled in (which by its nature may be invisible to the Intermediate due to some bug or vulnerability).
 
@@ -87,9 +114,9 @@ The need for a cryptographic binding to the channel between the Intermediate and
 
 # Bound Request/Response Header Protocol
 
-This specification introduces new hop-by-hop Bound-Request and Bound-Response headers, which use RFC 8941 structured fields. These headers convey a request/response Serial number, additional attributes, and a cryptographic binding.
+This specification introduces new hop-by-hop Bound-Request and Bound-Response headers, which use {{!RFC8941}} structured fields. These headers convey a request/response Serial number, additional attributes, and a cryptographic binding.
 
-As these are hop-by-hop headers they are added by the endpoints on the HTTP/1.1 persistent connection. Below we refer to the endpoint making the request as the Client and the endpoint receiving the request and issuing a response as the Server. For most cases where this is deployed the Client will be an Intermediary.
+As these are hop-by-hop headers they are added by the endpoints on the HTTP/1.1 persistent connection ({{!RFC9112}}). Below we refer to the endpoint making the request as the Client and the endpoint receiving the request and issuing a response as the Server. For most cases where this is deployed the Client will be an Intermediary.
 
 Clients and Servers MUST NOT exchange Bound-Request and Bound-Response headers unless they have mutually negotiated this protocol, either as described below in {{tls-negotiation}} or via some other out-of-band mechanism. If the Client and Server have negotiated using this protocol, they MUST send a Bound-Request and Bound-Response headers in all requests and responses.
 
@@ -115,7 +142,7 @@ bound_header = bound_header_name ":" serial ";"
 "authority=" authority ";"
 ("response-code" = response_code ";")?
            			"binding=" binding_value
-bound_header_name = ""Bound-Request" | "Bound-Response"
+bound_header_name = "Bound-Request" | "Bound-Response"
 serial = sf-integer
 method = sf-string
 authority = sf-string
@@ -134,8 +161,9 @@ In the above:
 * $key is the $req\_key or $resp\_key
 * $serial is the request or response serial as a string
 * $method is the HTTP request method associated with the request
-* $authority is the normalized authority for the request  (as defined in {{!RFC9110, Section 7.2}}) and MUST match the value in the request’s Host header
+* $authority is the normalized authority for the request  (as defined in {{!RFC9110, Section 7.2}}) and MUST match the value in the request's Host header
 * $response\_code is the response code for the response
+* The binding value construct uses HMAC-SHA256 ({{!RFC2104}} {{FIPS198-1}})
 
 For example, the header added to the first request on a connection might be:
 
@@ -149,7 +177,7 @@ For example, the header added to the first request on a connection might be:
 Some options might include:
 
 * Adding the Path as a parameter (or adding an attribute indicating that it should be considered included) and also binding it in.
-* Including a list of headers to bind in, and then use RFC 9421 HTTP Message Signatures or similar to protect them.
+* Including a list of headers to bind in, and then use {{RFC9421}} HTTP Message Signatures or similar to protect them.
 
 Adding in the Host header and Path could additionally defend against Host Confusion and Path Confusion attacks, respectively. Adding more in does add more complexity and has more risks of compatibility issues.
 
@@ -165,7 +193,7 @@ Validation checks MUST include:
 
 * Confirmation that the Bound-Request header is present
 * Confirmation that the cryptographic binding hash matches what was expected
-* Confirmation that the $req\_serial matches what was expected, starting at 1 for the first request on the connection and incrementing by1 for each subsequent request
+* Confirmation that the $req\_serial matches what was expected, starting at 1 for the first request on the connection and incrementing by 1 for each subsequent request
 * Confirmation that the authority and method match those in the request
 
 If the server is an intermediary, it MUST remove the Bound-Request header before constructing a request to the next-hop.
@@ -197,7 +225,7 @@ Requests which are "retried" MUST be treated no differently than other forms of 
 
 ## Handling TLS 1.3 Early Data {#tls13-0rtt}
 
-*TODO: define how this works with TLS 1.3 0RTT as it adds additional wrinkles. While this maybe could be made to work there (eg, using the separate early exporter secret and a distinct space for request\_serials).*
+*TODO: define how this works with TLS 1.3 0RTT as it adds additional wrinkles. While this maybe could be made to work there (eg, using the separate early exporter secret and a distinct space for request\_serials) {{RFC8446}}.*
 
 # Use with HTTPS over TLS
 
@@ -209,24 +237,22 @@ Negotiation needs to happen out-of-band (e.g., at the TLS layer) due to the natu
 
 Options for negotiation include:
 
-* ALPS (stalled/expired): [https://datatracker.ietf.org/doc/html/draft-vvv-tls-alps](https://datatracker.ietf.org/doc/html/draft-vvv-tls-alps)
-* TLS Extension Flags (waiting on implementation): [https://datatracker.ietf.org/doc/html/draft-ietf-tls-tlsflags-15](https://datatracker.ietf.org/doc/html/draft-ietf-tls-tlsflags-15)
+* ALPS (stalled/expired) {{I-D.vvv-tls-alps}}
+* TLS Extension Flags (waiting on implementation) {{I-D.ietf-tls-tlsflags}}
 * An all-new TLS extension specific to this purpose, which could also make it easier to version this protocol.
 
-Note that the first two options only support TLS 1.3. It would also be preferable for the mechanism here to negotiate the supported versions of this protocol.
+Note that the first two options only support TLS 1.3 {{!RFC8446}}. It would also be preferable for the mechanism here to negotiate the supported versions of this protocol.
 
-Application Protocols (ALPN values) other than "http/1.1" are not supported, and a server MUST NOT negotiate this Request-Binding protocol when negotiating an application protocol other than "http/1.1".
+Application Protocols (ALPN values, per {{RFC7301}}) other than "http/1.1" are not supported, and a server MUST NOT negotiate this Request-Binding protocol when negotiating an application protocol other than "http/1.1".
 
 ## Key Derivation using TLS Exporters {#keying-from-tls-exporters}
 
 The $req\_key and $resp\_key are derived using TLS Exporters.
 
+* For TLS 1.3 this is specified in {{!RFC8446, Section 7.5}}
+* For TLS 1.2 this is specified in {{!RFC5705}}
 
-* For TLS 1.3 this is specified in [rfc8446 section-7.5](https://www.rfc-editor.org/rfc/rfc8446#section-7.5)
-* For TLS 1.2 this is specified in [rfc5705](https://datatracker.ietf.org/doc/html/rfc5705)
-
-
-Endpoints MAY support TLS 1.2 using RFC5705, but if they do they MUST use an extended master secret. Endpoints MUST NOT use this protocol for versions of TLS prior to 1.2.
+Endpoints MAY support TLS 1.2 using {{!RFC5705}}, but if they do they MUST use an extended master secret ({{!RFC7627}}). Endpoints MUST NOT use this protocol for versions of TLS prior to 1.2.
 
 The request and response keys are constructed for a connection with:
 
@@ -240,7 +266,7 @@ The added context ensures that we get different keys derived for different negot
 
 ## Handling detection of desynchronized connections
 
-When an endpoint detects desynchronization (due to a missing or invalid Request Binding header) it needs to consider itself to be in an unknown, inconsistent, and potentially adversary-controlled state. Any processing that happens for past this point for this or other requests on the connection is dangerous and suspect, as nothing in the connection bytestream can be trusted at this point. Letting the request or response get past validation failures during parsing would leave the endpoint vulnerable and might execute smuggled instructions.
+When an endpoint detects desynchronization (due to a missing or invalid Request Binding header) it needs to consider itself to be in an unknown, inconsistent, and potentially adversary-controlled state. Any processing that happens past this point for this or other requests on the connection is dangerous and suspect, as nothing in the connection bytestream can be trusted at this point. Letting the request or response get past validation failures during parsing would leave the endpoint vulnerable and might execute smuggled instructions.
 
 Returning an HTTP error response would be bad as this response would be desynchronized and could be cached. Just breaking the connection does not provide information to clients as to why things broke, but is preferable.
 
@@ -271,7 +297,7 @@ Due to this protocol primarily being used between Intermediaries and Servers, in
 
 # Appendix: Alternate Approaches and Similar Protocols
 
-TLS Exporters are used in other protocols such as RFC 9261 (Exported Authenticators in TLS). While it is meant as a building block, it requires round-trips for some scenarios which would make it not suitable here.
+TLS Exporters are used in other protocols such as {{RFC9261}} (Exported Authenticators in TLS). While it is meant as a building block, it requires round-trips for some scenarios which would make it not suitable here.
 
 # Acknowledgments
 {:numbered="false"}
