@@ -102,13 +102,13 @@ In an example HRS attack from a malicious client to an origin through an interme
 
 *(TODO: Add a diagram)*
 
-The net result is that the Intermediate and Origin get desynchronized as to how requests and responses line up. When the malicious client makes a second request, it gets back the smuggled request, and a caching intermediary may actually cache the smuggled request with the cache key of this second request. This means the attacker can both bypass controls the Intermediary may be implementing, but may also be able to poison its cache.
+The net result is that the Intermediate and Origin get desynchronized as to how requests and responses line up. When the malicious client makes a second request, it gets back the response to the smuggled request, and a caching intermediary may actually cache the response to the smuggled request with the cache key of this second request. This means the attacker can not only bypass any controls the Intermediary may be implementing, but may also be able to poison its cache.
 
-With the proposed mitigation, the Intermediary augments the first and second requests (from its perspective) with signed hop-by-hop `Bound-Request` header fields indicating a serial number (e.g., 1 and 2). While the Origin is able to validate the header field in the first request, the smuggled request is missing the header field (and even if the attacker tried to add one it would fail validation). This allows the Origin to detect the desynchronization, enabling it to refuse to process the smuggled request and terminate the connection.
+With the proposed mitigation, the Intermediary augments the first and second requests (from its perspective) with cryptographically protected hop-by-hop `Bound-Request` header fields indicating a serial number (e.g., 1 and 2). While the Origin is able to validate the header field in the first request, the smuggled request is missing the header field (and even if the attacker tried to add one it would fail validation). This allows the Origin to detect the desynchronization, enabling it to refuse to process the smuggled request and terminate the connection.
 
 *(TODO: Add a diagram)*
 
-Request Smuggling is a family of attacks with many variations. This is why it's necessary to include the request and response binding hop-by-hop header fields in both directions, as in some other variations it's potentially possible for things to get reordered such that an Intermediate making request A with serial=1 might get back a response for a request C with serial=2 and needs to be able to fail on that as well, as well as any wide range of other similar cases of desynchronization.
+Request Smuggling is a family of attacks with many variations. This is why it's necessary to include the request and response binding hop-by-hop header fields in both directions, as in some other variations it's possible for things to get reordered such that an Intermediate making request A with serial=1 might get back a response for a request C with serial=2 and needs to be able to fail on that as well, as well as any wide range of other similar cases of desynchronization.
 
 The need for a cryptographic binding to the channel between the Intermediate and Server (eg, with TLS Exporters) is required to prevent the malicious client from including a fake request binding header field in what is being smuggled in (which by its nature may be invisible to the Intermediate due to some bug or vulnerability).
 
@@ -124,7 +124,7 @@ This specification introduces new hop-by-hop `Bound-Request` and `Bound-Response
 
 As these are hop-by-hop header fields they are added by the endpoints on the HTTP/1.1 persistent connection ({{!RFC9112}}). Below we refer to the endpoint making the request as the Client and the endpoint receiving the request and issuing a response as the Server. For most cases where this is deployed the Client will be an Intermediary.
 
-Clients and Servers MUST NOT exchange `Bound-Request` and `Bound-Response` header fields unless they have mutually negotiated this protocol, either as described below in {{tls-negotiation}} or via some other out-of-band mechanism. If the Client and Server have negotiated using this protocol, they MUST send a `Bound-Request` and `Bound-Response` header fields in all requests and responses.
+Clients and Servers MUST NOT exchange `Bound-Request` and `Bound-Response` header fields unless they have mutually negotiated this protocol, either as described below in {{tls-negotiation}} or via some other out-of-band mechanism. If the Client and Server have negotiated using this protocol for a connection, they MUST send a `Bound-Request` and `Bound-Response` header fields in all requests and responses on that connection.
 
 ## Request/Response Serials {#serials}
 
