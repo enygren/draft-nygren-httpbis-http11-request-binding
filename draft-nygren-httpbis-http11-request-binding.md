@@ -173,6 +173,8 @@ In the above:
 * `$response_code` is the response code for the response
 * The binding value construct uses HMAC-SHA256 ({{!RFC2104}})
 
+*(TODO: consider whether/how to add crypto agility for other keyed MACs)*
+
 For example, the header field added to the first request on a connection might be:
 
 ~~~
