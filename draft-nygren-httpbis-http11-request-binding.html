@@ -8,7 +8,7 @@
 <meta content="Erik Nygren" name="author">
 <meta content="Mike Bishop" name="author">
 <meta content="
-       HTTP/1.1 Request Binding adds new hop-by-hop request headers that are cryptographically bound to requests and responses. The keys used are negotiated out-of-band from the HTTP datastream (such as via TLS Exporters). These headers allow endpoints to detect and mitigate desynchronization attacks, such as HTTP Request Smuggling, that exist due to datastream handling differences. 
+       HTTP/1.1 Request Binding adds new hop-by-hop request header fields that are cryptographically bound to requests and responses. The keys used are negotiated out-of-band from the HTTP datastream (such as via TLS Exporters). These header fields allow endpoints to detect and mitigate desynchronization attacks, such as HTTP Request Smuggling, that exist due to datastream handling differences. 
     " name="description">
 <meta content="xml2rfc 3.30.2" name="generator">
 <meta content="HRS" name="keyword">
@@ -1051,7 +1051,7 @@ svg :is([fill="white"], [fill^="#fff"]) {
 </tr></thead>
 <tfoot><tr>
 <td class="left">Nygren &amp; Bishop</td>
-<td class="center">Expires 17 April 2026</td>
+<td class="center">Expires 18 April 2026</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1064,12 +1064,12 @@ svg :is([fill="white"], [fill^="#fff"]) {
 <dd class="internet-draft">draft-nygren-httpbis-http11-request-binding-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2025-10-14" class="published">14 October 2025</time>
+<time datetime="2025-10-15" class="published">15 October 2025</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2026-04-17">17 April 2026</time></dd>
+<dd class="expires"><time datetime="2026-04-18">18 April 2026</time></dd>
 <dt class="label-authors">Authors:</dt>
 <dd class="authors">
 <div class="author">
@@ -1086,7 +1086,7 @@ svg :is([fill="white"], [fill^="#fff"]) {
 <h1 id="title">HTTP/1.1 Request Smuggling Defense using Cryptographic Request Binding</h1>
 <section id="section-abstract">
       <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
-<p id="section-abstract-1">HTTP/1.1 Request Binding adds new hop-by-hop request headers that are cryptographically bound to requests and responses. The keys used are negotiated out-of-band from the HTTP datastream (such as via TLS Exporters). These headers allow endpoints to detect and mitigate desynchronization attacks, such as HTTP Request Smuggling, that exist due to datastream handling differences.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-1">HTTP/1.1 Request Binding adds new hop-by-hop request header fields that are cryptographically bound to requests and responses. The keys used are negotiated out-of-band from the HTTP datastream (such as via TLS Exporters). These header fields allow endpoints to detect and mitigate desynchronization attacks, such as HTTP Request Smuggling, that exist due to datastream handling differences.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
 </section>
 <div id="status-of-memo">
 <section id="section-boilerplate.1">
@@ -1107,7 +1107,7 @@ svg :is([fill="white"], [fill^="#fff"]) {
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 17 April 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 18 April 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1259,7 +1259,7 @@ svg :is([fill="white"], [fill^="#fff"]) {
     client =&gt; intermediate =&gt; origin
 </pre><a href="#section-1.1-2" class="pilcrow">¶</a>
 </div>
-<p id="section-1.1-3">the client can send an HTTP request header with two Content-Length headers and a Body that contains a second smuggled HTTP request after one of the content lengths.  If the intermediate and origin interpret the request in different ways, the intermediate might think that there was one request while the origin thinks there are now two requests. Not only would the first request get smuggled past intermediate defenses, if there is a second real request (so a total of three requests if you include the smuggled one) then the intermediary might cache the contents of the smuggled response with the cache key of the third request.  There are nigh-infinite variations on this in HTTP/1.1 with frequent vulnerabilities being found and fixed.<a href="#section-1.1-3" class="pilcrow">¶</a></p>
+<p id="section-1.1-3">the client can send an HTTP request header field with two Content-Length header fields and a Body that contains a second smuggled HTTP request after one of the content lengths.  If the intermediate and origin interpret the request in different ways, the intermediate might think that there was one request while the origin thinks there are now two requests. Not only would the first request get smuggled past intermediate defenses, if there is a second real request (so a total of three requests if you include the smuggled one) then the intermediary might cache the contents of the smuggled response with the cache key of the third request.  There are nigh-infinite variations on this in HTTP/1.1 with frequent vulnerabilities being found and fixed.<a href="#section-1.1-3" class="pilcrow">¶</a></p>
 <p id="section-1.1-4">While HTTP/2 and HTTP/3 are better (<span>[<a href="#RFC9113" class="cite xref">RFC9113</a>]</span> <span>[<a href="#RFC9114" class="cite xref">RFC9114</a>]</span>), conversions between HTTP versions can also be vectors for vulnerabilities here to creep in. Additionally, a malicious client could force an HTTP/1.1 connection to pollute shared resources (a cache or persistent connection) shared with other clients using newer HTTP protocols. Furthermore, the simplicity of HTTP/1.1 and large legacy code bases mean that there is extensive use of HTTP/1.1 in intermediaries such as reverse proxies in the ecosystem: origins themselves may have a proxy implementation fronting application servers, each of which having distinct HTTP implementations.<a href="#section-1.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -1268,10 +1268,10 @@ svg :is([fill="white"], [fill^="#fff"]) {
         <h3 id="name-mitigation-overview">
 <a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-mitigation-overview" class="section-name selfRef">Mitigation Overview</a>
         </h3>
-<p id="section-1.2-1">The key concept of this specification is for HTTP/1.1 endpoints (such as an intermediate and an origin) to be able to share information about their state (eg, which request/response they think they're parsing) in a way that is cryptographically bound to the hop-by-hop TLS connection. Since the attacker has no access to the key used for the cryptographic binding, this allows the endpoints to detect desynchronization and fail out but without needing changes to the HTTP/1.1 protocol itself. This shared key is then used to authenticate newly introduced hop-by-hop headers, binding information in those headers (which includes sequential request/response serial numbers) to the request. In the cases where requests or responses do become desynchronized the bound headers will not match what is expected or will fail to validate.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
-<p id="section-1.2-2">While "Request Framing Confusion" attacks (such as HTTP Request Smuggling or HRS) are one of the most common forms of HTTP Processing Discrepancy attacks, other types of attacks such as Host Confusion can also cause problems. This specification focuses on the former, but as it evolves we may be able to extend the approach taken to defend against other forms of attacks such as Host Confusion and Path Confusion, as well as to protect headers added by Intermediaries.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
+<p id="section-1.2-1">The key concept of this specification is for HTTP/1.1 endpoints (such as an intermediate and an origin) to be able to share information about their state (eg, which request/response they think they're parsing) in a way that is cryptographically bound to the hop-by-hop TLS connection. Since the attacker has no access to the key used for the cryptographic binding, this allows the endpoints to detect desynchronization and fail out but without needing changes to the HTTP/1.1 protocol itself. This shared key is then used to authenticate newly introduced hop-by-hop header fields, binding information in those header fields (which includes sequential request/response serial numbers) to the request. In the cases where requests or responses do become desynchronized the bound header fields will not match what is expected or will fail to validate.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
+<p id="section-1.2-2">While "Request Framing Confusion" attacks (such as HTTP Request Smuggling or HRS) are one of the most common forms of HTTP Processing Discrepancy attacks, other types of attacks such as Host Confusion can also cause problems. This specification focuses on the former, but as it evolves we may be able to extend the approach taken to defend against other forms of attacks such as Host Confusion and Path Confusion, as well as to protect header fields added by Intermediaries.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
 <p id="section-1.2-3"><em>(FOR DISCUSSION: How broadly do we want to scope this specification? How much do we include here, and how much do we leave hooks to enable future extension?)</em><a href="#section-1.2-3" class="pilcrow">¶</a></p>
-<p id="section-1.2-4">HTTP endpoints communicating HTTPS over TLS use TLS Exporters to obtain the key used for the binding (<span>[<a href="#RFC8446" class="cite xref">RFC8446</a>], <a href="https://rfc-editor.org/rfc/rfc8446#section-7.5" class="relref">Section 7.5</a></span> <span>[<a href="#RFC5705" class="cite xref">RFC5705</a>]</span>), enabling both endpoints of a connection to securely derive this key out-of-band from the request flow in a way that can't be tampered with. The use of Request Binding headers is also negotiated during the TLS handshake.<a href="#section-1.2-4" class="pilcrow">¶</a></p>
+<p id="section-1.2-4">HTTP endpoints communicating HTTPS over TLS use TLS Exporters to obtain the key used for the binding (<span>[<a href="#RFC8446" class="cite xref">RFC8446</a>], <a href="https://rfc-editor.org/rfc/rfc8446#section-7.5" class="relref">Section 7.5</a></span> <span>[<a href="#RFC5705" class="cite xref">RFC5705</a>]</span>), enabling both endpoints of a connection to securely derive this key out-of-band from the request flow in a way that can't be tampered with. The use of Request Binding header fields is also negotiated during the TLS handshake.<a href="#section-1.2-4" class="pilcrow">¶</a></p>
 <p id="section-1.2-5">The key used for the binding is abstracted out, so proprietary implementations not using TLS can distribute the key in some other manner, such as in a preface attribute that could be added to the PROXY protocol <span>[<a href="#PROXY" class="cite xref">PROXY</a>]</span>.<a href="#section-1.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -1282,11 +1282,11 @@ svg :is([fill="white"], [fill^="#fff"]) {
         </h3>
 <p id="section-1.3-1">In an example HRS attack from a malicious client to an origin through an intermediary, the request might start out normally but the malicious client smuggles a second malicious request into the initial request (eg, due to a bug in the intermediate or due to the intermediate and origin interpreting the HTTP/1.1 protocol slightly differently).<a href="#section-1.3-1" class="pilcrow">¶</a></p>
 <p id="section-1.3-2"><em>(TODO: Add a diagram)</em><a href="#section-1.3-2" class="pilcrow">¶</a></p>
-<p id="section-1.3-3">The net result is that the Intermediate and Origin get desynchronized as to how requests and responses line up. When the malicious client makes a second request, it gets back the smuggled request, and a caching intermediary may actually cache the smuggled request with the cache key of this second request. This means the attacker can both bypass controls the Intermediary may be implementing, but may also be able to poison its cache.<a href="#section-1.3-3" class="pilcrow">¶</a></p>
-<p id="section-1.3-4">With the proposed mitigation, the Intermediary augments the first and second requests (from its perspective) with signed hop-by-hop <code>Bound-Request</code> headers indicating a serial number (e.g., 1 and 2). While the Origin is able to validate the header in the first request, the smuggled request is missing the header (and even if the attacker tried to add one it would fail validation). This allows the Origin to detect the desynchronization, enabling it to refuse to process the smuggled request and terminate the connection.<a href="#section-1.3-4" class="pilcrow">¶</a></p>
+<p id="section-1.3-3">The net result is that the Intermediate and Origin get desynchronized as to how requests and responses line up. When the malicious client makes a second request, it gets back the response to the smuggled request, and a caching intermediary may actually cache the response to the smuggled request with the cache key of this second request. This means the attacker can not only bypass any controls the Intermediary may be implementing, but may also be able to poison its cache.<a href="#section-1.3-3" class="pilcrow">¶</a></p>
+<p id="section-1.3-4">With the proposed mitigation, the Intermediary augments the first and second requests (from its perspective) with cryptographically protected hop-by-hop <code>Bound-Request</code> header fields indicating a serial number (e.g., 1 and 2). While the Origin is able to validate the header field in the first request, the smuggled request is missing the header field (and even if the attacker tried to add one it would fail validation). This allows the Origin to detect the desynchronization, enabling it to refuse to process the smuggled request and terminate the connection.<a href="#section-1.3-4" class="pilcrow">¶</a></p>
 <p id="section-1.3-5"><em>(TODO: Add a diagram)</em><a href="#section-1.3-5" class="pilcrow">¶</a></p>
-<p id="section-1.3-6">Request Smuggling is a family of attacks with many variations. This is why it's necessary to include the request and response binding hop-by-hop headers in both directions, as in some other variations it's potentially possible for things to get reordered such that an Intermediate making request A with serial=1 might get back a response for a request C with serial=2 and needs to be able to fail on that as well, as well as any wide range of other similar cases of desynchronization.<a href="#section-1.3-6" class="pilcrow">¶</a></p>
-<p id="section-1.3-7">The need for a cryptographic binding to the channel between the Intermediate and Server (eg, with TLS Exporters) is required to prevent the malicious client from including a fake request binding header in what is being smuggled in (which by its nature may be invisible to the Intermediate due to some bug or vulnerability).<a href="#section-1.3-7" class="pilcrow">¶</a></p>
+<p id="section-1.3-6">Request Smuggling is a family of attacks with many variations. This is why it's necessary to include the request and response binding hop-by-hop header fields in both directions, as in some other variations it's possible for things to get reordered such that an Intermediate making request A with serial=1 might get back a response for a request C with serial=2 and needs to be able to fail on that as well, as well as any wide range of other similar cases of desynchronization.<a href="#section-1.3-6" class="pilcrow">¶</a></p>
+<p id="section-1.3-7">The need for a cryptographic binding to the channel between the Intermediate and Server (eg, with TLS Exporters) is required to prevent the malicious client from including a fake request binding header field in what is being smuggled in (which by its nature may be invisible to the Intermediate due to some bug or vulnerability).<a href="#section-1.3-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -1307,9 +1307,9 @@ appear in all capitals, as shown here.<a href="#section-2-1" class="pilcrow">¶<
       <h2 id="name-bound-request-response-head">
 <a href="#section-3" class="section-number selfRef">3. </a><a href="#name-bound-request-response-head" class="section-name selfRef">Bound Request/Response Header Protocol</a>
       </h2>
-<p id="section-3-1">This specification introduces new hop-by-hop <code>Bound-Request</code> and <code>Bound-Response</code> headers, which use <span>[<a href="#RFC8941" class="cite xref">RFC8941</a>]</span> structured fields. These headers convey a request/response Serial number, additional attributes, and a cryptographic binding.<a href="#section-3-1" class="pilcrow">¶</a></p>
-<p id="section-3-2">As these are hop-by-hop headers they are added by the endpoints on the HTTP/1.1 persistent connection (<span>[<a href="#RFC9112" class="cite xref">RFC9112</a>]</span>). Below we refer to the endpoint making the request as the Client and the endpoint receiving the request and issuing a response as the Server. For most cases where this is deployed the Client will be an Intermediary.<a href="#section-3-2" class="pilcrow">¶</a></p>
-<p id="section-3-3">Clients and Servers <span class="bcp14">MUST NOT</span> exchange <code>Bound-Request</code> and <code>Bound-Response</code> headers unless they have mutually negotiated this protocol, either as described below in <a href="#tls-negotiation" class="auto internal xref">Section 4.1</a> or via some other out-of-band mechanism. If the Client and Server have negotiated using this protocol, they <span class="bcp14">MUST</span> send a <code>Bound-Request</code> and <code>Bound-Response</code> headers in all requests and responses.<a href="#section-3-3" class="pilcrow">¶</a></p>
+<p id="section-3-1">This specification introduces new hop-by-hop <code>Bound-Request</code> and <code>Bound-Response</code> header fields, which use <span>[<a href="#RFC8941" class="cite xref">RFC8941</a>]</span> structured fields. These header fields convey a request/response Serial number, additional attributes, and a cryptographic binding.<a href="#section-3-1" class="pilcrow">¶</a></p>
+<p id="section-3-2">As these are hop-by-hop header fields they are added by the endpoints on the HTTP/1.1 persistent connection (<span>[<a href="#RFC9112" class="cite xref">RFC9112</a>]</span>). Below we refer to the endpoint making the request as the Client and the endpoint receiving the request and issuing a response as the Server. For most cases where this is deployed the Client will be an Intermediary.<a href="#section-3-2" class="pilcrow">¶</a></p>
+<p id="section-3-3">Clients and Servers <span class="bcp14">MUST NOT</span> exchange <code>Bound-Request</code> and <code>Bound-Response</code> header fields unless they have mutually negotiated this protocol, either as described below in <a href="#tls-negotiation" class="auto internal xref">Section 4.1</a> or via some other out-of-band mechanism. If the Client and Server have negotiated using this protocol for a connection, they <span class="bcp14">MUST</span> send a <code>Bound-Request</code> and <code>Bound-Response</code> header fields in all requests and responses on that connection.<a href="#section-3-3" class="pilcrow">¶</a></p>
 <div id="serials">
 <section id="section-3.1">
         <h3 id="name-request-response-serials">
@@ -1332,15 +1332,15 @@ appear in all capitals, as shown here.<a href="#section-2-1" class="pilcrow">¶<
         <h3 id="name-header-specification">
 <a href="#section-3.3" class="section-number selfRef">3.3. </a><a href="#name-header-specification" class="section-name selfRef">Header Specification</a>
         </h3>
-<p id="section-3.3-1">The <code>Bound-Request</code> and <code>Bound-Response</code> headers are specified as an integer item (the Serial) followed by a parameter list of items.<a href="#section-3.3-1" class="pilcrow">¶</a></p>
+<p id="section-3.3-1">The <code>Bound-Request</code> and <code>Bound-Response</code> header fields are specified as an integer item (the Serial) followed by a parameter list of items.<a href="#section-3.3-1" class="pilcrow">¶</a></p>
 <p id="section-3.3-2">The ABNF is as follows:<a href="#section-3.3-2" class="pilcrow">¶</a></p>
 <div class="lang-abnf sourcecode" id="section-3.3-3">
 <pre>
-bound_header      = bound_header_name ":" serial ";"
-                  / "method=" method ";"
-                  / "authority=" authority ";"
-                  / ("response-code" = response_code ";")?
-                  / "binding=" binding_value
+bound_header      = bound_header_name ":" serial ";" OWS
+                    "method=" method ";" OWS
+                    "authority=" authority ";" OWS
+                    ("response-code" = response_code ";" OWS)?
+                    "binding=" binding_value
 bound_header_name = "Bound-Request" | "Bound-Response"
 serial            = sf-integer
 method            = sf-string
@@ -1368,7 +1368,7 @@ binding_value     = sf-binary
             <p id="section-3.3-8.3.1"><code>$method</code> is the HTTP request method associated with the request<a href="#section-3.3-8.3.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-3.3-8.4">
-            <p id="section-3.3-8.4.1"><code>$authority</code> is the normalized authority for the request  (as defined in <span>[<a href="#RFC9110" class="cite xref">RFC9110</a>], <a href="https://rfc-editor.org/rfc/rfc9110#section-7.2" class="relref">Section 7.2</a></span>) and <span class="bcp14">MUST</span> match the value in the request's Host header<a href="#section-3.3-8.4.1" class="pilcrow">¶</a></p>
+            <p id="section-3.3-8.4.1"><code>$authority</code> is the authority ((as defined in <span>[<a href="#RFC9110" class="cite xref">RFC9110</a>], <a href="https://rfc-editor.org/rfc/rfc9110#section-4.2.3" class="relref">Section 4.2.3</a></span>) from the normalized URI (as defined in <span>[<a href="#RFC9110" class="cite xref">RFC9110</a>], <a href="https://rfc-editor.org/rfc/rfc9110#section-4.2.3" class="relref">Section 4.2.3</a></span>) for the request  and <span class="bcp14">MUST</span> match the value in the request's Host header field<a href="#section-3.3-8.4.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-3.3-8.5">
             <p id="section-3.3-8.5.1"><code>$response_code</code> is the response code for the response<a href="#section-3.3-8.5.1" class="pilcrow">¶</a></p>
@@ -1377,12 +1377,13 @@ binding_value     = sf-binary
             <p id="section-3.3-8.6.1">The binding value construct uses HMAC-SHA256 (<span>[<a href="#RFC2104" class="cite xref">RFC2104</a>]</span>)<a href="#section-3.3-8.6.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-3.3-9">For example, the header added to the first request on a connection might be:<a href="#section-3.3-9" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="section-3.3-10">
+<p id="section-3.3-9"><em>(TODO: consider whether/how to add crypto agility for other keyed MACs)</em><a href="#section-3.3-9" class="pilcrow">¶</a></p>
+<p id="section-3.3-10">For example, the header field added to the first request on a connection might be:<a href="#section-3.3-10" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-3.3-11">
 <pre>
    Bound-Request: 1; method=POST; authority=www.example.com;
                   binding=:yYwktnfv9Ehgr+pvSTu67FuxxMuyCcb8K7tH9m/yrTE=:
-</pre><a href="#section-3.3-10" class="pilcrow">¶</a>
+</pre><a href="#section-3.3-11" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
@@ -1398,7 +1399,7 @@ binding_value     = sf-binary
             <p id="section-3.4-3.1.1">Adding the <code>:path</code> as a parameter (or adding an attribute indicating that it should be considered included) and also binding it in.<a href="#section-3.4-3.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-3.4-3.2">
-            <p id="section-3.4-3.2.1">Including a list of headers to bind in, and then use <span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span> HTTP Message Signatures or similar to protect them.<a href="#section-3.4-3.2.1" class="pilcrow">¶</a></p>
+            <p id="section-3.4-3.2.1">Including a list of header fields to bind in, and then use <span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span> HTTP Message Signatures or similar to protect them.<a href="#section-3.4-3.2.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
 <p id="section-3.4-4">Adding more in does add more complexity and has more risks of compatibility issues.<a href="#section-3.4-4" class="pilcrow">¶</a></p>
@@ -1409,7 +1410,8 @@ binding_value     = sf-binary
         <h3 id="name-client-request-handling">
 <a href="#section-3.5" class="section-number selfRef">3.5. </a><a href="#name-client-request-handling" class="section-name selfRef">Client Request Handling</a>
         </h3>
-<p id="section-3.5-1">Clients which have negotiated this protocol <span class="bcp14">MUST</span> add a <code>Bound-Request</code> header with each request they make. If the Client is an Intermediary, it <span class="bcp14">MUST</span> first remove any <code>Bound-Request</code> headers that it received. The <code>$req_serial</code> <span class="bcp14">MUST</span> start at 1 for the first request on a persistent connection, and <span class="bcp14">MUST</span> be incremented by 1 for each subsequent request.<a href="#section-3.5-1" class="pilcrow">¶</a></p>
+<p id="section-3.5-1">Clients which have negotiated this protocol <span class="bcp14">MUST</span> add a <code>Bound-Request</code> header field with each request they make.  The <code>$req_serial</code> <span class="bcp14">MUST</span> start at 1 for the first request on a persistent connection, and <span class="bcp14">MUST</span> be incremented by 1 for each subsequent request.<a href="#section-3.5-1" class="pilcrow">¶</a></p>
+<p id="section-3.5-2">If the Client is an Intermediary, regardless of whether or not this protocol was negotiated for the connection, it <span class="bcp14">MUST</span> remove any <code>Bound-Request</code> header fields that it received (prior to adding its own, if applicable).<a href="#section-3.5-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="server-req-handling">
@@ -1417,11 +1419,11 @@ binding_value     = sf-binary
         <h3 id="name-server-request-handling">
 <a href="#section-3.6" class="section-number selfRef">3.6. </a><a href="#name-server-request-handling" class="section-name selfRef">Server Request Handling</a>
         </h3>
-<p id="section-3.6-1">Servers which have negotiated this protocol <span class="bcp14">MUST</span> validate the presence and contents of the <code>Bound-Request</code> header prior to processing a request. Any failures <span class="bcp14">MUST</span> be detected early in request processing (such as during request parsing), and servers <span class="bcp14">MUST</span> immediately terminate the connection without returning an error response.<a href="#section-3.6-1" class="pilcrow">¶</a></p>
+<p id="section-3.6-1">Servers which have negotiated this protocol <span class="bcp14">MUST</span> validate the presence and contents of the <code>Bound-Request</code> header field prior to processing a request. Any failures <span class="bcp14">MUST</span> be detected early in request processing (such as during request parsing), and servers <span class="bcp14">MUST</span> immediately terminate the connection without returning an error response.<a href="#section-3.6-1" class="pilcrow">¶</a></p>
 <p id="section-3.6-2">Validation checks <span class="bcp14">MUST</span> include:<a href="#section-3.6-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-3.6-3.1">
-            <p id="section-3.6-3.1.1">Confirmation that the <code>Bound-Request</code> header is present<a href="#section-3.6-3.1.1" class="pilcrow">¶</a></p>
+            <p id="section-3.6-3.1.1">Confirmation that the <code>Bound-Request</code> header field is present<a href="#section-3.6-3.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-3.6-3.2">
             <p id="section-3.6-3.2.1">Confirmation that the cryptographic binding hash matches what was expected<a href="#section-3.6-3.2.1" class="pilcrow">¶</a></p>
@@ -1433,8 +1435,9 @@ binding_value     = sf-binary
             <p id="section-3.6-3.4.1">Confirmation that the authority and method match those in the request<a href="#section-3.6-3.4.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-3.6-4">If the server is an intermediary, it <span class="bcp14">MUST</span> remove the <code>Bound-Request</code> header before constructing a request to the next-hop.<a href="#section-3.6-4" class="pilcrow">¶</a></p>
-<p id="section-3.6-5">When constructing a response to the HTTP request the server <span class="bcp14">MUST</span> add a <code>Bound-Response</code> header with a <code>$resp_serial</code> matching the <code>$req_serial</code> of the incoming request. If the Client is an Intermediary, it <span class="bcp14">MUST</span> first remove any <code>Bound-Response</code> headers that it received.<a href="#section-3.6-5" class="pilcrow">¶</a></p>
+<p id="section-3.6-4">If the server is an intermediary, it <span class="bcp14">MUST</span> remove the <code>Bound-Request</code> header field before constructing a request to the next-hop, regardless of whether this protocol is used for the next-hop.<a href="#section-3.6-4" class="pilcrow">¶</a></p>
+<p id="section-3.6-5">When constructing a response to the HTTP request the server <span class="bcp14">MUST</span> add a <code>Bound-Response</code> header field with a <code>$resp_serial</code> matching the <code>$req_serial</code> of the incoming request.<a href="#section-3.6-5" class="pilcrow">¶</a></p>
+<p id="section-3.6-6">If the Server is an Intermediary, it <span class="bcp14">MUST</span> first remove any <code>Bound-Response</code> header fields that it received, regardless of whether this protocol is used on the previous-hop.<a href="#section-3.6-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="client-resp-handling">
@@ -1442,11 +1445,11 @@ binding_value     = sf-binary
         <h3 id="name-client-response-handling">
 <a href="#section-3.7" class="section-number selfRef">3.7. </a><a href="#name-client-response-handling" class="section-name selfRef">Client Response Handling</a>
         </h3>
-<p id="section-3.7-1">Clients which have negotiated this protocol <span class="bcp14">MUST</span> validate the presence and contents of the <code>Bound-Response</code> header prior to processing a response. Any failures <span class="bcp14">MUST</span> be detected early in response processing (such as during response parsing), and clients <span class="bcp14">MUST</span> immediately terminate the connection without processing any data from the response.<a href="#section-3.7-1" class="pilcrow">¶</a></p>
+<p id="section-3.7-1">Clients which have negotiated this protocol <span class="bcp14">MUST</span> validate the presence and contents of the <code>Bound-Response</code> header field prior to processing a response. Any failures <span class="bcp14">MUST</span> be detected early in response processing (such as during response parsing), and clients <span class="bcp14">MUST</span> immediately terminate the connection without processing any data from the response.<a href="#section-3.7-1" class="pilcrow">¶</a></p>
 <p id="section-3.7-2">Validation checks <span class="bcp14">MUST</span> include:<a href="#section-3.7-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-3.7-3.1">
-            <p id="section-3.7-3.1.1">Confirmation that the <code>Bound-Response</code> header is present<a href="#section-3.7-3.1.1" class="pilcrow">¶</a></p>
+            <p id="section-3.7-3.1.1">Confirmation that the <code>Bound-Response</code> header field is present<a href="#section-3.7-3.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-3.7-3.2">
             <p id="section-3.7-3.2.1">Confirmation that the cryptographic binding hash matches what was expected<a href="#section-3.7-3.2.1" class="pilcrow">¶</a></p>
@@ -1455,13 +1458,13 @@ binding_value     = sf-binary
             <p id="section-3.7-3.3.1">Confirmation that the <code>$resp_serial</code> matches the <code>$req_serial</code> of the request that the response is in-response to.<a href="#section-3.7-3.3.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-3.7-3.4">
-            <p id="section-3.7-3.4.1">Confirmation that the authority and method match those from the corresponding the request<a href="#section-3.7-3.4.1" class="pilcrow">¶</a></p>
+            <p id="section-3.7-3.4.1">Confirmation that the authority and method match those from the corresponding request<a href="#section-3.7-3.4.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-3.7-3.5">
             <p id="section-3.7-3.5.1">Confirmation that the <code>$response_code</code> matches that from the response (or interim response, as discussed in <a href="#handling-1xx" class="auto internal xref">Section 3.8</a>)<a href="#section-3.7-3.5.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-3.7-4">If the client is an intermediary, it <span class="bcp14">MUST</span> remove the <code>Bound-Response</code> header before constructing a response to the previous-hop.<a href="#section-3.7-4" class="pilcrow">¶</a></p>
+<p id="section-3.7-4">If the client is an intermediary, it <span class="bcp14">MUST</span> remove the <code>Bound-Response</code> header field before constructing a response to the previous-hop, regardless of whether this protocol is used for the previous-hop.<a href="#section-3.7-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="handling-1xx">
@@ -1469,7 +1472,8 @@ binding_value     = sf-binary
         <h3 id="name-handling-100-continue-and-1">
 <a href="#section-3.8" class="section-number selfRef">3.8. </a><a href="#name-handling-100-continue-and-1" class="section-name selfRef">Handling 100 Continue and 103 Early Hints</a>
         </h3>
-<p id="section-3.8-1">When using <code>100 Continue</code> and <code>103 Early Hints</code>, the <code>$req_serial</code> and <code>$resp_serial</code> <span class="bcp14">MUST</span> remain the same and match for all interim and final responses. Each interim response <span class="bcp14">MUST</span> contain a <code>Bound-Response</code> header with a response-code parameter matching the response code of the interim response.<a href="#section-3.8-1" class="pilcrow">¶</a></p>
+<p id="section-3.8-1">When using <code>100 Continue</code> and <code>103 Early Hints</code>, the <code>$req_serial</code> and <code>$resp_serial</code> <span class="bcp14">MUST</span> remain the same and match for all interim and final responses. Each interim response <span class="bcp14">MUST</span> contain a <code>Bound-Response</code> header field with a response-code parameter matching the response code of the interim response.<a href="#section-3.8-1" class="pilcrow">¶</a></p>
+<p id="section-3.8-2"><em>(TODO can we safely extend this requirement to all 1xx status codes?)</em><a href="#section-3.8-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="retry-handling">
@@ -1477,7 +1481,7 @@ binding_value     = sf-binary
         <h3 id="name-retrying-requests">
 <a href="#section-3.9" class="section-number selfRef">3.9. </a><a href="#name-retrying-requests" class="section-name selfRef">Retrying Requests</a>
         </h3>
-<p id="section-3.9-1">Requests which are retried <span class="bcp14">MUST</span> be treated no differently than other forms of request with their <code>$req_serial</code> coming from the order of the request in a persistent connection. If a request is retried over a different connection a new <code>Bound-Request</code> header <span class="bcp14">MUST</span> be reconstructed corresponding to the new connection.<a href="#section-3.9-1" class="pilcrow">¶</a></p>
+<p id="section-3.9-1">Requests which are retried <span class="bcp14">MUST</span> be treated no differently than other forms of request, with their <code>$req_serial</code> coming from the order of the request in a persistent connection. If a request is retried over a different connection a new <code>Bound-Request</code> header field <span class="bcp14">MUST</span> be reconstructed corresponding to the new connection.<a href="#section-3.9-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="tls13-0rtt">
@@ -1485,7 +1489,7 @@ binding_value     = sf-binary
         <h3 id="name-handling-tls-13-early-data">
 <a href="#section-3.10" class="section-number selfRef">3.10. </a><a href="#name-handling-tls-13-early-data" class="section-name selfRef">Handling TLS 1.3 Early Data</a>
         </h3>
-<p id="section-3.10-1"><em>TODO: define how this works with TLS 1.3 0RTT as it adds additional wrinkles. While this maybe could be made to work there (eg, using the separate early exporter secret and a distinct space for request_serials) <span>[<a href="#RFC8446" class="cite xref">RFC8446</a>]</span>.</em><a href="#section-3.10-1" class="pilcrow">¶</a></p>
+<p id="section-3.10-1"><em>TODO: define how this works with TLS 1.3 0RTT as it adds additional wrinkles. While this maybe could be made to work there (eg, using the separate early exporter secret and a distinct space for request_serials) <span>[<a href="#RFC8446" class="cite xref">RFC8446</a>]</span>, we need to ensure that we properly handle situations where an HTTP request spans 0-RTT and 1-RTT data.</em><a href="#section-3.10-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -1500,7 +1504,7 @@ binding_value     = sf-binary
         <h3 id="name-negotiation">
 <a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-negotiation" class="section-name selfRef">Negotiation</a>
         </h3>
-<p id="section-4.1-1">Since the <code>Bound-Request</code> header is hop-by-hop header it is not safe to send unless the client knows that recipient supports it, will process it, and then will remove it. Clients and servers <span class="bcp14">MUST NOT</span> send <code>Bound-Request</code> or <code>Bound-Response</code> headers on connections where they have not negotiated this protocol.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+<p id="section-4.1-1">Since the <code>Bound-Request</code> header field is hop-by-hop header field it is not safe to send unless the client knows that recipient supports it, will process it, and then will remove it. Clients and servers <span class="bcp14">MUST NOT</span> send <code>Bound-Request</code> or <code>Bound-Response</code> header fields on connections where they have not negotiated this protocol.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
 <p id="section-4.1-2">Negotiation needs to happen out-of-band (e.g., at the TLS layer) due to the nature of the attacks this is trying to mitigate.<a href="#section-4.1-2" class="pilcrow">¶</a></p>
 <p id="section-4.1-3">Options for negotiation include:<a href="#section-4.1-3" class="pilcrow">¶</a></p>
 <ul class="normal">
@@ -1532,15 +1536,16 @@ binding_value     = sf-binary
             <p id="section-4.2-2.2.1">For TLS 1.2 this is specified in <span>[<a href="#RFC5705" class="cite xref">RFC5705</a>]</span><a href="#section-4.2-2.2.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-4.2-3">Endpoints <span class="bcp14">MAY</span> support TLS 1.2 using <span>[<a href="#RFC5705" class="cite xref">RFC5705</a>]</span>, but if they do they <span class="bcp14">MUST</span> use an extended master secret (<span>[<a href="#RFC7627" class="cite xref">RFC7627</a>]</span>). Endpoints <span class="bcp14">MUST NOT</span> use this protocol for versions of TLS prior to 1.2.<a href="#section-4.2-3" class="pilcrow">¶</a></p>
+<p id="section-4.2-3">Endpoints <span class="bcp14">MAY</span> support TLS 1.2 using <span>[<a href="#RFC5705" class="cite xref">RFC5705</a>]</span>, but if they do they <span class="bcp14">MUST</span> only use this extension when the extended master secret (<span>[<a href="#RFC7627" class="cite xref">RFC7627</a>]</span>) extension is also used. Endpoints <span class="bcp14">MUST NOT</span> use this protocol for versions of TLS prior to 1.2.<a href="#section-4.2-3" class="pilcrow">¶</a></p>
 <p id="section-4.2-4">The request and response keys are constructed for a connection with:<a href="#section-4.2-4" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-4.2-5">
 <pre>
-$req_key = TLS-Exporter("HTTP-Request-Binding", "request-"+$alpn, 256)
-$resp_key = TLS-Exporter("HTTP-Request-Binding", "response-"+$alpn, 256)
+$req_key = TLS-Exporter("HTTP-Request-Binding", "request-"+$alpn, 32)
+$resp_key = TLS-Exporter("HTTP-Request-Binding", "response-"+$alpn, 32)
 </pre><a href="#section-4.2-5" class="pilcrow">¶</a>
 </div>
 <p id="section-4.2-6">The added context ensures that we get different keys derived for different negotiated ALPNs. When HTTP/1.1 was negotiated without an ALPN, <code>$alpn</code> <span class="bcp14">SHALL</span> be <code>http/1.1</code>.<a href="#section-4.2-6" class="pilcrow">¶</a></p>
+<p id="section-4.2-7">When this extension is negotiated, HTTP requests that indicate an HTTP-version other than HTTP/1.1 <span class="bcp14">MUST</span> be rejected, with the connection closed prior to sending an HTTP-layer response.<a href="#section-4.2-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -1555,7 +1560,7 @@ $resp_key = TLS-Exporter("HTTP-Request-Binding", "response-"+$alpn, 256)
         <h3 id="name-handling-detection-of-desyn">
 <a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-handling-detection-of-desyn" class="section-name selfRef">Handling detection of desynchronized connections</a>
         </h3>
-<p id="section-5.1-1">When an endpoint detects desynchronization (due to a missing or invalid Request Binding header) it needs to consider itself to be in an unknown, inconsistent, and potentially adversary-controlled state. Any processing that happens past this point for this or other requests on the connection is dangerous and suspect, as nothing in the connection bytestream can be trusted at this point. Letting the request or response get past validation failures during parsing would leave the endpoint vulnerable and might execute smuggled instructions.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+<p id="section-5.1-1">When an endpoint detects desynchronization (due to a missing or invalid Request Binding header field) it needs to consider itself to be in an unknown, inconsistent, and potentially adversary-controlled state. Any processing that happens past this point for this or other requests on the connection is dangerous and suspect, as nothing in the connection bytestream can be trusted at this point. Letting the request or response get past validation failures during parsing would leave the endpoint vulnerable and might execute smuggled instructions.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
 <p id="section-5.1-2">Returning an HTTP error response would be bad as this response would be desynchronized and could be cached. Just breaking the connection does not provide information to clients as to why things broke, but is preferable.<a href="#section-5.1-2" class="pilcrow">¶</a></p>
 <p id="section-5.1-3"><em>TODO: explore if there may be a way to use a TLS alert to signal that badness happened to the other endpoint.</em><a href="#section-5.1-3" class="pilcrow">¶</a></p>
 </section>
@@ -1705,7 +1710,7 @@ $resp_key = TLS-Exporter("HTTP-Request-Binding", "response-"+$alpn, 256)
       <h2 id="name-acknowledgments">
 <a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
       </h2>
-<p id="appendix-B-1">The authors would like to thank Kaan Onarlioglu, Rich Salz, Ben Kaduk, Uttaran Dutta, and others who have contributed to this proposal.<a href="#appendix-B-1" class="pilcrow">¶</a></p>
+<p id="appendix-B-1">The authors would like to thank Kaan Onarlioglu, Rich Salz, Benjamin Kaduk, Uttaran Dutta, and others who have contributed to this proposal.<a href="#appendix-B-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="authors-addresses">
