@@ -1,0 +1,3 @@
+# Automatically generated CODEOWNERS
+# Regenerate with `make update-codeowners`
+draft-nygren-httpbis-http11-request-binding.md erik+ietf@nygren.org mbishop@evequefou.be
