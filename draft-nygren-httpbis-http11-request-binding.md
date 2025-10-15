@@ -117,6 +117,9 @@ The need for a cryptographic binding to the channel between the Intermediary and
 
 {::boilerplate bcp14-tagged}
 
+This document uses terms defined in {{Section 3 of RFC9110}}, including
+"Client", "Server", "Intermediary", "Origin", "upstream", "downstream",
+"inbound", and "outbound".
 
 # Bound Request/Response Header Protocol
 
@@ -210,11 +213,15 @@ Validation checks MUST include:
 * Confirmation that the `$req_serial` matches what was expected, starting at 1 for the first request on the connection and incrementing by 1 for each subsequent request
 * Confirmation that the authority and method match those in the request
 
-If the server is an intermediary, it MUST remove the `Bound-Request` header field before constructing a request to the next-hop, regardless of whether this protocol is used for the next-hop.
+If the server is an intermediary, it MUST remove the `Bound-Request` header
+field before constructing a request to the upstream hop, regardless of whether this
+protocol was used on the downstream connection.
 
-When constructing a response to the HTTP request the server MUST add a `Bound-Response` header field with a `$resp_serial` matching the `$req_serial` of the incoming request.
+When constructing a response to an HTTP request, the server MUST add a `Bound-Response` header field with a `$resp_serial` matching the `$req_serial` of the incoming request.
 
-If the Server is an Intermediary, it MUST first remove any `Bound-Response` header fields that it received, regardless of whether this protocol is used on the previous-hop.
+If the Server is an Intermediary, it MUST first remove any `Bound-Response`
+header fields that it received, regardless of whether this protocol was used on
+the upstream connection.
 
 ## Client Response Handling {#client-resp-handling}
 
@@ -229,7 +236,9 @@ Validation checks MUST include:
 * Confirmation that the `$response_code` matches that from the response (or interim response, as discussed in {{handling-1xx}})
 
 
-If the client is an intermediary, it MUST remove the `Bound-Response` header field before constructing a response to the previous-hop, regardless of whether this protocol is used for the previous-hop.
+If the client is an intermediary, it MUST remove the `Bound-Response` header
+field before constructing a response on the downstream connection, regardless of
+whether this protocol is used for the downstream connection.
 
 ## Handling 100 Continue and 103 Early Hints {#handling-1xx}
 
