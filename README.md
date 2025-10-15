@@ -1,8 +1,15 @@
-<!-- regenerate: on (set to off if you edit this file) -->
+<!-- regenerate: off (set to off if you edit this file) -->
 
 # HTTP/1.1 Request Smuggling Defense using Cryptographic Request Binding
 
-This is the working area for the individual Internet-Draft, "HTTP/1.1 Request Smuggling Defense using Cryptographic Request Binding".
+This is the working area for the individual Internet-Draft, "HTTP/1.1 Request
+Smuggling Defense using Cryptographic Request Binding".
+
+HTTP/1.1 Request Binding adds new hop-by-hop request headers that are
+cryptographically bound to requests and responses. The keys used are negotiated
+out-of-band from the HTTP datastream (such as via TLS Exporters). These headers
+allow endpoints to detect and mitigate desynchronization attacks, such as HTTP
+Request Smuggling, that exist due to datastream handling differences.
 
 * [Editor's Copy](https://enygren.github.io/draft-nygren-httpbis-http11-request-binding/#go.draft-nygren-httpbis-http11-request-binding.html)
 * [Datatracker Page](https://datatracker.ietf.org/doc/draft-nygren-httpbis-http11-request-binding)
