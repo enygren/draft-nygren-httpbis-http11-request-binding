@@ -275,8 +275,8 @@ Endpoints MAY support TLS 1.2 using {{!RFC5705}}, but if they do they MUST only 
 The request and response keys are constructed for a connection with:
 
 ~~~
-$req_key = TLS-Exporter("HTTP-Request-Binding", "request-"+$alpn, 256)
-$resp_key = TLS-Exporter("HTTP-Request-Binding", "response-"+$alpn, 256)
+$req_key = TLS-Exporter("HTTP-Request-Binding", "request-"+$alpn, 32)
+$resp_key = TLS-Exporter("HTTP-Request-Binding", "response-"+$alpn, 32)
 ~~~
 
 The added context ensures that we get different keys derived for different negotiated ALPNs. When HTTP/1.1 was negotiated without an ALPN, `$alpn` SHALL be `http/1.1`.
