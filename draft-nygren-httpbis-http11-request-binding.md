@@ -324,4 +324,4 @@ TLS Exporters are used in other protocols such as {{RFC9261}} (Exported Authenti
 # Acknowledgments
 {:numbered="false"}
 
-The authors would like to thank Kaan Onarlioglu, Rich Salz, Ben Kaduk, Uttaran Dutta, and others who have contributed to this proposal.
+The authors would like to thank Kaan Onarlioglu, Rich Salz, Benjamin Kaduk, Uttaran Dutta, and others who have contributed to this proposal.
