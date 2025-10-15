@@ -77,16 +77,16 @@ HTTP/1.1 Request Binding adds new hop-by-hop request header fields that are cryp
 HTTP Request Smuggling is a class of desynchronization attack {{HTTPSYNC}} where a malicious endpoint can cause a chain of other endpoints to get confused about HTTP request framing due to attributes of the HTTP/1.1 protocol leading to ambiguities in interpretation and variations in implementation.  For example, if in a flow of:
 
 ~~~
-    client => intermediate => origin
+    client => intermediary => origin
 ~~~
 
-the client can send an HTTP request header field with two Content-Length header fields and a Body that contains a second smuggled HTTP request after one of the content lengths.  If the intermediate and origin interpret the request in different ways, the intermediate might think that there was one request while the origin thinks there are now two requests. Not only would the first request get smuggled past intermediate defenses, if there is a second real request (so a total of three requests if you include the smuggled one) then the intermediary might cache the contents of the smuggled response with the cache key of the third request.  There are nigh-infinite variations on this in HTTP/1.1 with frequent vulnerabilities being found and fixed.
+the client can send an HTTP request header field with two Content-Length header fields and a Body that contains a second smuggled HTTP request after one of the content lengths.  If the intermediary and origin interpret the request in different ways, the intermediary might think that there was one request while the origin thinks there are now two requests. Not only would the first request get smuggled past intermediary defenses, if there is a second real request (so a total of three requests if you include the smuggled one) then the intermediary might cache the contents of the smuggled response with the cache key of the third request.  There are nigh-infinite variations on this in HTTP/1.1 with frequent vulnerabilities being found and fixed.
 
 While HTTP/2 and HTTP/3 are better ({{RFC9113}} {{RFC9114}}), conversions between HTTP versions can also be vectors for vulnerabilities here to creep in. Additionally, a malicious client could force an HTTP/1.1 connection to pollute shared resources (a cache or persistent connection) shared with other clients using newer HTTP protocols. Furthermore, the simplicity of HTTP/1.1 and large legacy code bases mean that there is extensive use of HTTP/1.1 in intermediaries such as reverse proxies in the ecosystem: origins themselves may have a proxy implementation fronting application servers, each of which having distinct HTTP implementations.
 
 ## Mitigation Overview
 
-The key concept of this specification is for HTTP/1.1 endpoints (such as an intermediate and an origin) to be able to share information about their state (eg, which request/response they think they're parsing) in a way that is cryptographically bound to the hop-by-hop TLS connection. Since the attacker has no access to the key used for the cryptographic binding, this allows the endpoints to detect desynchronization and fail out but without needing changes to the HTTP/1.1 protocol itself. This shared key is then used to authenticate newly introduced hop-by-hop header fields, binding information in those header fields (which includes sequential request/response serial numbers) to the request. In the cases where requests or responses do become desynchronized the bound header fields will not match what is expected or will fail to validate.
+The key concept of this specification is for HTTP/1.1 endpoints (such as an intermediary and an origin) to be able to share information about their state (eg, which request/response they think they're parsing) in a way that is cryptographically bound to the hop-by-hop TLS connection. Since the attacker has no access to the key used for the cryptographic binding, this allows the endpoints to detect desynchronization and fail out but without needing changes to the HTTP/1.1 protocol itself. This shared key is then used to authenticate newly introduced hop-by-hop header fields, binding information in those header fields (which includes sequential request/response serial numbers) to the request. In the cases where requests or responses do become desynchronized the bound header fields will not match what is expected or will fail to validate.
 
 While "Request Framing Confusion" attacks (such as HTTP Request Smuggling or HRS) are one of the most common forms of HTTP Processing Discrepancy attacks, other types of attacks such as Host Confusion can also cause problems. This specification focuses on the former, but as it evolves we may be able to extend the approach taken to defend against other forms of attacks such as Host Confusion and Path Confusion, as well as to protect header fields added by Intermediaries.
 
@@ -98,19 +98,19 @@ The key used for the binding is abstracted out, so proprietary implementations n
 
 ## Illustrative Example
 
-In an example HRS attack from a malicious client to an origin through an intermediary, the request might start out normally but the malicious client smuggles a second malicious request into the initial request (eg, due to a bug in the intermediate or due to the intermediate and origin interpreting the HTTP/1.1 protocol slightly differently).
+In an example HRS attack from a malicious client to an origin through an intermediary, the request might start out normally but the malicious client smuggles a second malicious request into the initial request (eg, due to a bug in the intermediary or due to the intermediary and origin interpreting the HTTP/1.1 protocol slightly differently).
 
 *(TODO: Add a diagram)*
 
-The net result is that the Intermediate and Origin get desynchronized as to how requests and responses line up. When the malicious client makes a second request, it gets back the response to the smuggled request, and a caching intermediary may actually cache the response to the smuggled request with the cache key of this second request. This means the attacker can not only bypass any controls the Intermediary may be implementing, but may also be able to poison its cache.
+The net result is that the Intermediary and Origin get desynchronized as to how requests and responses line up. When the malicious client makes a second request, it gets back the response to the smuggled request, and a caching intermediary may actually cache the response to the smuggled request with the cache key of this second request. This means the attacker can not only bypass any controls the Intermediary may be implementing, but may also be able to poison its cache.
 
 With the proposed mitigation, the Intermediary augments the first and second requests (from its perspective) with cryptographically protected hop-by-hop `Bound-Request` header fields indicating a serial number (e.g., 1 and 2). While the Origin is able to validate the header field in the first request, the smuggled request is missing the header field (and even if the attacker tried to add one it would fail validation). This allows the Origin to detect the desynchronization, enabling it to refuse to process the smuggled request and terminate the connection.
 
 *(TODO: Add a diagram)*
 
-Request Smuggling is a family of attacks with many variations. This is why it's necessary to include the request and response binding hop-by-hop header fields in both directions, as in some other variations it's possible for things to get reordered such that an Intermediate making request A with serial=1 might get back a response for a request C with serial=2 and needs to be able to fail on that as well, as well as any wide range of other similar cases of desynchronization.
+Request Smuggling is a family of attacks with many variations. This is why it's necessary to include the request and response binding hop-by-hop header fields in both directions, as in some other variations it's possible for things to get reordered such that an intermediary making request A with serial=1 might get back a response for a request C with serial=2 and needs to be able to fail on that as well, as well as any wide range of other similar cases of desynchronization.
 
-The need for a cryptographic binding to the channel between the Intermediate and Server (eg, with TLS Exporters) is required to prevent the malicious client from including a fake request binding header field in what is being smuggled in (which by its nature may be invisible to the Intermediate due to some bug or vulnerability).
+The need for a cryptographic binding to the channel between the Intermediary and Server (eg, with TLS Exporters) is required to prevent the malicious client from including a fake request binding header field in what is being smuggled in (which by its nature may be invisible to the Intermediary due to some bug or vulnerability).
 
 
 # Conventions and Definitions
@@ -306,7 +306,7 @@ With the use of TLS Exporters each connection gets a unique pair of `$req_key` a
 
 # Privacy considerations
 
-Due to this protocol primarily being used between Intermediaries and Servers, information sent by the (intermediate) Client during the TLS handshake for negotiation does not cause privacy issues for end-users. If this protocol were to be extended into end-user Clients as well, more evaluation of privacy considerations would be warranted.
+Due to this protocol primarily being used between Intermediaries and Servers, information sent by the (intermediary) Client during the TLS handshake for negotiation does not cause privacy issues for end-users. If this protocol were to be extended into end-user Clients as well, more evaluation of privacy considerations would be warranted.
 
 
 # IANA Considerations
