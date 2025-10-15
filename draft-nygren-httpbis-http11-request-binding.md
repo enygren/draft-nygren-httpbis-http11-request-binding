@@ -281,6 +281,8 @@ $resp_key = TLS-Exporter("HTTP-Request-Binding", "response-"+$alpn, 32)
 
 The added context ensures that we get different keys derived for different negotiated ALPNs. When HTTP/1.1 was negotiated without an ALPN, `$alpn` SHALL be `http/1.1`.
 
+When this extension is negotiated, HTTP requests that indicate an HTTP-version other than HTTP/1.1 MUST be rejected, with the connection closed prior to sending an HTTP-layer response.
+
 
 # Security Considerations
 
