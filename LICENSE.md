@@ -1,4 +1,4 @@
 # License
 
 See the
-[guidelines for contributions](https://github.com/enygren/draft-nygren-dhc-recommended-ipv6-address/blob/main/CONTRIBUTING.md).
+[guidelines for contributions](https://github.com/enygren/draft-nygren-httpbis-http11-request-binding/blob/main/CONTRIBUTING.md).
