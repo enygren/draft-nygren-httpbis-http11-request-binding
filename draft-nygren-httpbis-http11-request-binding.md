@@ -169,7 +169,7 @@ In the above:
 * `$key` is the `$req_key` or `$resp_key`
 * `$serial` is the request or response serial as a string
 * `$method` is the HTTP request method associated with the request
-* `$authority` is the normalized authority for the request  (as defined in {{!RFC9110, Section 7.2}}) and MUST match the value in the request's Host header field
+* `$authority` is the authority ((as defined in {{!RFC9110, Section 4.2.3}}) from the normalized URI (as defined in {{!RFC9110, Section 4.2.3}}) for the request  and MUST match the value in the request's Host header field
 * `$response_code` is the response code for the response
 * The binding value construct uses HMAC-SHA256 ({{!RFC2104}})
 
@@ -195,7 +195,9 @@ Adding more in does add more complexity and has more risks of compatibility issu
 
 ## Client Request Handling {#client-req-handling}
 
-Clients which have negotiated this protocol MUST add a `Bound-Request` header field with each request they make. If the Client is an Intermediary, it MUST first remove any `Bound-Request` header fields that it received. The `$req_serial` MUST start at 1 for the first request on a persistent connection, and MUST be incremented by 1 for each subsequent request.
+Clients which have negotiated this protocol MUST add a `Bound-Request` header field with each request they make.  The `$req_serial` MUST start at 1 for the first request on a persistent connection, and MUST be incremented by 1 for each subsequent request.
+
+If the Client is an Intermediary, regardless of whether or not this protocol was negotiated for the connection, it MUST remove any `Bound-Request` header fields that it received (prior to adding its own, if applicable).
 
 ## Server Request Handling {#server-req-handling}
 
@@ -208,9 +210,11 @@ Validation checks MUST include:
 * Confirmation that the `$req_serial` matches what was expected, starting at 1 for the first request on the connection and incrementing by 1 for each subsequent request
 * Confirmation that the authority and method match those in the request
 
-If the server is an intermediary, it MUST remove the `Bound-Request` header field before constructing a request to the next-hop.
+If the server is an intermediary, it MUST remove the `Bound-Request` header field before constructing a request to the next-hop, regardless of whether this protocol is used for the next-hop.
 
-When constructing a response to the HTTP request the server MUST add a `Bound-Response` header field with a `$resp_serial` matching the `$req_serial` of the incoming request. If the Client is an Intermediary, it MUST first remove any `Bound-Response` header fields that it received.
+When constructing a response to the HTTP request the server MUST add a `Bound-Response` header field with a `$resp_serial` matching the `$req_serial` of the incoming request.
+
+If the Server is an Intermediary, it MUST first remove any `Bound-Response` header fields that it received, regardless of whether this protocol is used on the previous-hop.
 
 ## Client Response Handling {#client-resp-handling}
 
@@ -221,23 +225,25 @@ Validation checks MUST include:
 * Confirmation that the `Bound-Response` header field is present
 * Confirmation that the cryptographic binding hash matches what was expected
 * Confirmation that the `$resp_serial` matches the `$req_serial` of the request that the response is in-response to.
-* Confirmation that the authority and method match those from the corresponding the request
+* Confirmation that the authority and method match those from the corresponding request
 * Confirmation that the `$response_code` matches that from the response (or interim response, as discussed in {{handling-1xx}})
 
 
-If the client is an intermediary, it MUST remove the `Bound-Response` header field before constructing a response to the previous-hop.
+If the client is an intermediary, it MUST remove the `Bound-Response` header field before constructing a response to the previous-hop, regardless of whether this protocol is used for the previous-hop.
 
 ## Handling 100 Continue and 103 Early Hints {#handling-1xx}
 
 When using `100 Continue` and `103 Early Hints`, the `$req_serial` and `$resp_serial` MUST remain the same and match for all interim and final responses. Each interim response MUST contain a `Bound-Response` header field with a response-code parameter matching the response code of the interim response.
 
+*(TODO can we safely extend this requirement to all 1xx status codes?)*
+
 ## Retrying Requests {#retry-handling}
 
-Requests which are retried MUST be treated no differently than other forms of request with their `$req_serial` coming from the order of the request in a persistent connection. If a request is retried over a different connection a new `Bound-Request` header field MUST be reconstructed corresponding to the new connection.
+Requests which are retried MUST be treated no differently than other forms of request, with their `$req_serial` coming from the order of the request in a persistent connection. If a request is retried over a different connection a new `Bound-Request` header field MUST be reconstructed corresponding to the new connection.
 
 ## Handling TLS 1.3 Early Data {#tls13-0rtt}
 
-*TODO: define how this works with TLS 1.3 0RTT as it adds additional wrinkles. While this maybe could be made to work there (eg, using the separate early exporter secret and a distinct space for request\_serials) {{RFC8446}}.*
+*TODO: define how this works with TLS 1.3 0RTT as it adds additional wrinkles. While this maybe could be made to work there (eg, using the separate early exporter secret and a distinct space for request\_serials) {{RFC8446}}, we need to ensure that we properly handle situations where an HTTP request spans 0-RTT and 1-RTT data.*
 
 # Use with HTTPS over TLS
 
@@ -264,7 +270,7 @@ The `$req_key` and `$resp_key` are derived using TLS Exporters.
 * For TLS 1.3 this is specified in {{!RFC8446, Section 7.5}}
 * For TLS 1.2 this is specified in {{!RFC5705}}
 
-Endpoints MAY support TLS 1.2 using {{!RFC5705}}, but if they do they MUST use an extended master secret ({{!RFC7627}}). Endpoints MUST NOT use this protocol for versions of TLS prior to 1.2.
+Endpoints MAY support TLS 1.2 using {{!RFC5705}}, but if they do they MUST only use this extension when the extended master secret ({{!RFC7627}}) extension is also used. Endpoints MUST NOT use this protocol for versions of TLS prior to 1.2.
 
 The request and response keys are constructed for a connection with:
 
