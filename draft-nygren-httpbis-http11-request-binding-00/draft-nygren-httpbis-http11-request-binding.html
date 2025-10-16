@@ -1,0 +1,1782 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>HTTP/1.1 Request Smuggling Defense using Cryptographic Message Binding</title>
+<meta content="Erik Nygren" name="author">
+<meta content="Mike Bishop" name="author">
+<meta content="
+       HTTP/1.1 Message Binding adds new hop-by-hop header fields that are cryptographically bound to requests and responses. The keys used are negotiated out-of-band from the HTTP datastream (such as via TLS Exporters). These header fields allow endpoints to detect and mitigate desynchronization attacks, such as HTTP Request Smuggling, that exist due to datastream handling differences. 
+    " name="description">
+<meta content="xml2rfc 3.30.2" name="generator">
+<meta content="HRS" name="keyword">
+<meta content="Request Smuggling" name="keyword">
+<meta content="Message Binding" name="keyword">
+<meta content="draft-nygren-httpbis-http11-request-binding-latest" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.30.2
+    Python 3.12.11
+    ConfigArgParse 1.7
+    google-i18n-address 3.1.1
+    intervaltree 3.1.0
+    Jinja2 3.1.6
+    lxml 5.3.1
+    platformdirs 4.4.0
+    pycountry 24.6.1
+    PyYAML 6.0.2
+    requests 2.32.5
+    setuptools 80.9.0
+    wcwidth 0.2.14
+-->
+<link href="draft-nygren-httpbis-http11-request-binding.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-cyrillic.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-cyrillic.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local('Lora SemiBold'), local('Lora-SemiBold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-semibold-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Oxygen Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Oxygen Mono'), local('OxygenMono-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/oxygenmono-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Oxygen Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Oxygen Mono'), local('OxygenMono-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/oxygenmono-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-greek.woff2') format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-greek.woff2') format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  color-scheme: light dark;
+  --background-color: #fff;
+  --text-color: #222;
+  --title-color: #191919;
+  --link-color: #2a6496;
+  --highlight-color: #f9f9f9;
+  --line-color: #eee;
+  --pilcrow-weak: #ddd;
+  --pilcrow-strong: #bbb;
+  --small-font-size: 14.5px;
+  --font-mono: 'Oxygen Mono', monospace;
+  --font-title: "Sofia Sans Semi Condensed", sans-serif;
+  scrollbar-color: #bbb #eee;
+}
+body {
+  max-width: 600px;
+  margin: 75px auto;
+  padding: 0 5px;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  font: 16px/22px "Lora", serif;
+  scroll-behavior: smooth;
+}
+
+.ears {
+  display: none;
+}
+
+/* headings */
+section {
+  clear: both;
+}
+.section-number {
+  padding-right: 0.5em;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  font-weight: 680;
+  margin: 0.8em 0 0.3em;
+  font-size-adjust: 0.5;
+  color: var(--title-color);
+}
+h1#title {
+  font-size: 32px;
+  line-height: 40px;
+  clear: both;
+}
+h1#title, h1#rfcnum {
+  margin: 1.5em 0 0.2em;
+}
+h1#rfcnum + h1#title {
+  margin: 0.2em 0;
+}
+
+h1, h2, h3 {
+  font-size: 22px;
+  line-height: 27px;
+}
+h4, h5, h6 {
+  font-size: 20px;
+  line-height: 24px;
+}
+
+/* general structure */
+.author {
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+#abstract+p {
+  font-size: 18px;
+  line-height: 24px;
+}
+#abstract+p code, #abstract+p samp, #abstract+p tt {
+  font-size: 16px;
+  line-height: 0;
+}
+
+p {
+  padding: 0;
+  margin: 0.5em 0;
+  text-align: left;
+}
+div {
+  margin: 0;
+}
+.alignRight.art-text {
+  background-color: var(--highlight-color);
+  border: 1px solid var(--line-color);
+  border-radius: 3px;
+  padding: 0.5em 1em 0;
+  margin-bottom: 0.5em;
+}
+.alignRight.art-text pre {
+  padding: 0;
+  width: auto;
+}
+.alignRight {
+  margin: 1em 0;
+}
+.alignRight > *:first-child {
+  border: none;
+  margin: 0;
+  float: right;
+  clear: both;
+}
+.alignRight > *:nth-child(2) {
+  clear: both;
+  display: block;
+  border: none;
+}
+svg {
+  display: block;
+}
+/* font-family isn't space-separated, but =~ will have to do */
+svg[font-family~="monospace" i], svg [font-family~="monospace" i] {
+  font-family: var(--font-mono);
+}
+.alignCenter.art-text {
+  background-color: var(--highlight-color);
+  border: 1px solid var(--line-color);
+  border-radius: 3px;
+  padding: 0.5em 1em 0;
+  margin-bottom: 0.5em;
+}
+.alignCenter.art-text pre {
+  padding: 0;
+  width: auto;
+}
+.alignCenter {
+  margin: 1em 0;
+}
+.alignCenter > *:first-child {
+  border: none;
+  /* this isn't optimal, but it's an existence proof.  PrinceXML doesn't
+     support flexbox yet.
+  */
+  display: table;
+  margin: 0 auto;
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 0.5em 2em;
+  & :is(ol, ul) {
+    margin-left: 1em;
+  }
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+  & li {
+    margin-top: 0.5em;
+  }
+}
+:is(ul, ol).compact, .ulCompact, .olCompact {
+  margin: 0 0 0 2em;
+  & li {
+    margin: 0;
+    & :first-child { margin-top: 0; }
+    & :last-child { margin-bottom: 0; }
+  }
+}
+
+/* definition lists */
+dl {
+  clear: left;
+  --indent: 3ch;
+  /* --indent: attr(indent ch); not supported in any browser, but we can dream */
+  &.olPercent {
+    --indent: 5ch;
+    & > dt {
+      min-width: calc(var(--indent) - 2ch);
+    }
+  }
+  &.olPercent > dt {
+    float: none;
+  }
+
+  dl > dd > & {
+    margin-top: 0.5em;
+    margin-bottom: 0;
+  }
+}
+dl:not(.dlNewline) > dt {
+  float: left;
+  margin-right: 2ch;
+  min-width: 8ch;
+}
+dl > dd {
+  margin-bottom: .8em;
+  margin-left: var(--indent) !important; /* stupid element overrides */
+  min-height: 2ex;
+}
+:is(dl.compact, .dlCompact) > dd {
+  margin-bottom: 0;
+  & > :is(:first-child, .break:first-child + *) {
+    margin-top: 0;
+  }
+  & > :is(:last-child) {
+    margin-bottom: 0;
+  }
+}
+:is(dd, span).break {
+  display: none;
+}
+
+/* links */
+a, a[href].selfRef:hover {
+  text-decoration: none;
+}
+a[href] {
+  color: var(--link-color);
+}
+a[href].selfRef, .iref + a[href].internal {
+  color: var(--text-color);
+}
+a[href]:hover {
+  text-decoration: underline;
+}
+a[href].selfRef:hover {
+  background-color: var(--highlight-color);
+}
+a.xref:is(.cite, .auto), :is(#status-of-memo, #copyright) a {
+  white-space: nowrap;
+}
+
+/* Figures */
+tt, code, pre {
+  background-color: var(--highlight-color);
+  font: 14px/22px var(--font-mono);
+}
+tt, code {
+  /* changing the font for inline elements leads to different ascender
+     and descender heights; as we want to retain baseline alignment,
+     remove leading to avoid altering the final height of lines
+     note: this fails if these blocks take an entire line,
+     a different solution would be great */
+  line-height: 0;
+}
+:is(h1, h2, h3, h4, h5, h6) :is(tt, code) {
+  font-size: 84%;
+}
+pre {
+  border: 1px solid var(--line-color);
+  font-size: 13.5px;
+  line-height: 16px;
+  letter-spacing: -0.2px;
+  margin: 5px;
+  padding: 5px;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0.5em 0;
+  padding: 0;
+}
+figure blockquote {
+  margin: 0.8em 0.4em 0.4em;
+}
+figcaption, caption {
+  font-style: italic;
+  margin: 0.5em 1.5em;
+  text-align: left;
+  caption-side: bottom;
+}
+@media screen {
+  /* Auto-collapse boilerplate. */
+  :is(#status-of-memo, #copyright) p {
+    margin: -2px 0;
+    max-height: 0;
+    transition: max-height 2s ease, margin 0.5s ease 0.5s;
+    overflow: hidden;
+  }
+  :is(#status-of-memo, #copyright):hover p,
+  :is(#status-of-memo, #copyright) h2:target ~ p {
+    margin: 0.5em 0;
+    max-height: 500px;
+    overflow: auto;
+  }
+  pre, svg {
+    display: inline-block;
+    /* In the horizontal direction, sometimes people make over-sized figures.
+       Scrollbars for those is therefore necessary: auto adds them as necessary..
+       In the vertical direction, the line-height can combine with the font
+       asender/descender height to produce scrollbars: hidden avoids that. */
+    overflow: auto hidden;
+  }
+  pre {
+    max-width: 100%;
+    width: calc(100% - 22px - 1em);
+  }
+  svg {
+    max-width: calc(100% - 22px - 1em);
+  }
+  figure pre {
+    display: block;
+    width: calc(100% - 25px);
+  }
+  :is(pre, svg) + .pilcrow {
+    display: inline-block;
+    vertical-align: text-bottom;
+    padding-bottom: 8px;
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 0 2em;
+  font-style: italic;
+}
+blockquote {
+  margin: 1em 0;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+
+/* tables */
+table {
+  width: auto;
+  max-width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+}
+table.right {
+  margin-left: auto;
+}
+table.center {
+  margin-left: auto;
+  margin-right: auto;
+}
+table.left {
+  margin-right: auto;
+}
+table .text-left {
+  text-align: left;
+}
+table .text-center {
+  text-align: center;
+}
+table .text-right {
+  text-align: right;
+}
+
+thead, tbody {
+  border: 1px solid var(--line-color);
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 5px 10px;
+}
+th {
+  background-color: var(--line-color);
+}
+:is(tr:nth-child(2n), thead+tbody > tr:nth-child(2n+1)) > td {
+  background-color: var(--background-color);
+}
+:is(tr:nth-child(2n+1), thead+tbody > tr:nth-child(2n)) > td {
+  background-color: var(--highlight-color);
+}
+table caption {
+  margin: 0;
+  padding: 3px 0 3px 1em;
+}
+table p {
+  margin: 0;
+}
+
+/* pilcrow */
+a.pilcrow {
+  margin-left: 3px;
+  opacity: 0.2;
+  user-select: none;
+  &[href] {
+    color: var(--pilcrow-weak);
+    &:hover { text-decoration: none; }
+  }
+}
+@media not print {
+  :hover > a.pilcrow {
+    opacity: 1;
+  }
+  a.pilcrow[href]:hover {
+    color: var(--pilcrow-strong);
+    background-color: transparent;
+  }
+}
+@media print {
+  a.pilcrow {
+    display: none;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid var(--line-color);
+}
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: 600;
+  font-size: var(--small-font-size);
+}
+.role {
+  font-variant: all-small-caps;
+}
+sub, sup {
+  line-height: 1;
+  font-size: 80%;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: var(--small-font-size);
+  line-height: 18px;
+  --identifier-width: 15ch;
+  & dt {
+    width: var(--identifier-width);
+    min-width: var(--identifier-width);
+    clear: left;
+    float: left;
+    text-align: right;
+    margin-right: 1ch;
+  }
+  & dd {
+    margin: 0;
+    margin-left: calc(1em + var(--identifier-width)) !important;
+    min-width: 5em;
+  }
+  & .authors {
+    & .author {
+      display: inline-block;
+      margin-right: 1.5em;
+    }
+    & .org {
+      font-style: italic;
+    }
+  }
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #999;
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+}
+.docInfo .prepared {
+  float: right;
+}
+
+/* table of contents */
+#toc {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+
+  & nav {
+    & ul {
+      margin: 0 0.5em 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    & li {
+      line-height: 1.3em;
+      margin: 2px 0;
+      padding-left: 1.2em;
+      text-indent: -1.2em;
+    }
+  }
+  & a.xref {
+    white-space: normal;
+  }
+}
+
+.references {
+  & > dt {
+    text-align: right;
+    font-weight: bold;
+    min-width: 10ch;
+    margin-right: 1.5ch;
+    &:target::before {
+      content: "⇒";
+      margin: 0 10px 0 -25px;
+    }
+  }
+  & > dd {
+    margin-left: 12ch !important;
+    overflow: visible;
+    & .refInstance {
+      margin-bottom: 0.8em;
+    }
+    & .ascii {
+      margin-bottom: 0.25em;
+    }
+  }
+}
+
+#rfc\.index\.index + ul {
+  margin-left: 0;
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  max-width: 20em;
+  margin: 1em auto 1em 0;
+
+  & .nameRole {
+    font-weight: 700;
+    margin-left: 0;
+  }
+  & .label {
+    margin: 0.5em 0;
+  }
+  & .type {
+    display: none;
+  }
+  & .alternative-contact {
+    margin: 0.5em 0 0.25em 0;
+  }
+  & .non-ascii {
+    margin: 0 0 0 2em;
+  }
+  & div.left {
+    text-align: left;
+  }
+  & div.right {
+    text-align: right;
+  }
+}
+
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+@media (min-width: 500px) {
+  #authors-addresses > section {
+    column-count: 2;
+    column-gap: 20px;
+  }
+  #authors-addresses > section > h2 {
+    column-span: all;
+  }
+  /* hack for break-inside: avoid-column */
+  #authors-addresses address {
+    display: inline-block;
+    break-inside: avoid-column;
+  }
+}
+
+/* Comments */
+.rfcEditorRemove p:first-of-type {
+  font-style: italic;
+}
+.cref {
+  background-color: rgba(249, 232, 105, 0.3);
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+
+@media screen {
+  #toc nav {
+    font-family: var(--font-title);
+    font-weight: 360;
+    & > ul { margin-bottom: 2em; }
+    & ul {
+      margin: 0 0 0 4px;
+      & :is(p, li) {
+        margin: 2px 0;
+      }
+    }
+  }
+  #toc a.toplink {
+    float: right;
+  }
+}
+@media not screen {
+  #toc a.toplink {
+    display: none;
+  }
+}
+
+
+/* TOC layout for smaller screens */
+@media screen and (max-width: 929px) {
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 1px 0 0 0;
+    margin: 0;
+    border-bottom: 1px solid #ccc;
+    opacity: 0.6;
+  }
+  #toc h2 {
+    margin: 0;
+    padding: 2px 0 2px 6px;
+    padding-right: 1em;
+    font-size: 18px;
+    line-height: 24px;
+    min-width: 190px;
+    text-align: right;
+    background-color: #444;
+    color: white;
+    cursor: pointer;
+    &::before { /* css hamburger */
+      float: right;
+      position: relative;
+      width: 1em;
+      height: 1px;
+      left: -164px;
+      margin: 8px 0 0 0;
+      background: white none repeat scroll 0 0;
+      box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+      content: "";
+    }
+  }
+  #toc nav {
+    display: none;
+    background-color: var(--background-color);
+    padding: 0.5em 1em 1em;
+    overflow: auto;
+    overscroll-behavior: contain;
+    height: calc(100vh - 48px);
+    border-left: 1px solid #ddd;
+  }
+  #toc.active {
+    opacity: 1;
+    & nav { display: block; }
+  }
+  /* Make the collapsed ToC header render white on gray also when it's a link */
+  #toc h2 a,
+  #toc h2 a:is(:link, :focus, :hover),
+  #toc a.toplink,
+  #toc a.toplink:hover {
+    color: white;
+    background-color: #444;
+    text-decoration: none;
+  }
+  #toc a.toplink {
+    margin: 2px 0.5em 0;
+  }
+}
+
+/* TOC layout for wide screens */
+@media screen and (min-width: 930px) {
+  body {
+    padding-right: 360px;
+    padding-right: calc(min(180px + 20%, 500px));
+  }
+  #toc {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    right: calc(50vw - 480px);
+    width: 312px;
+    margin: 0;
+    padding: 0;
+    z-index: 1;
+  }
+  #toc h2 {
+    margin: 0;
+    padding: 0.25em 1em 1em 0;
+  }
+  #toc nav {
+    display: block;
+    height: calc(90vh - 84px);
+    bottom: 0;
+    padding: 0.5em 0 2em;
+    overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+  #toc a.toplink {
+    margin: 8px 0.5em 0;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc, #n-introduction {
+    page-break-before: always;
+  }
+  #toc {
+    border-top: none;
+    padding-top: 0;
+  }
+  figure, pre, .vcard {
+    page-break-inside: avoid;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  :is(h2, h3, h4, h5, h6)+*, dd {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+}
+
+/* Dark mode. */
+@media (prefers-color-scheme: dark) {
+:root {
+  --background-color: #121212;
+  --text-color: #f0f0f0;
+  --title-color: #fff;
+  --link-color: #4da4f0;
+  --highlight-color: #282828;
+  --line-color: #444;
+  --pilcrow-weak: #444;
+  --pilcrow-strong: #666;
+  scrollbar-color: #777 #333;
+}
+}
+
+/* SVG Trick: a prefix match works because only black and white are allowed */
+svg :is([stroke="black"], [stroke^="#000"]) {
+  stroke: var(--text-color);
+}
+svg :is([stroke="white"], [stroke^="#fff"]) {
+  stroke: var(--background-color);
+}
+svg :is([fill="black"], [fill^="#000"], :not([fill])) {
+  fill: var(--text-color);
+}
+svg :is([fill="white"], [fill^="#fff"]) {
+  fill: var(--background-color);
+}
+</style>
+
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">HTTP/1.1 Message Binding</td>
+<td class="right">October 2025</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">Nygren &amp; Bishop</td>
+<td class="center">Expires 19 April 2026</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">httpbis</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-nygren-httpbis-http11-request-binding-latest</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2025-10-16" class="published">16 October 2025</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Standards Track</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2026-04-19">19 April 2026</time></dd>
+<dt class="label-authors">Authors:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">E. Nygren</div>
+<div class="org">Akamai Technologies</div>
+</div>
+<div class="author">
+      <div class="author-name">M. Bishop</div>
+<div class="org">Akamai Technologies</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">HTTP/1.1 Request Smuggling Defense using Cryptographic Message Binding</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">HTTP/1.1 Message Binding adds new hop-by-hop header fields that are cryptographically bound to requests and responses. The keys used are negotiated out-of-band from the HTTP datastream (such as via TLS Exporters). These header fields allow endpoints to detect and mitigate desynchronization attacks, such as HTTP Request Smuggling, that exist due to datastream handling differences.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 19 April 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2025 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-motivation" class="internal xref">Motivation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-mitigation-overview" class="internal xref">Mitigation Overview</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.3">
+                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-illustrative-example" class="internal xref">Illustrative Example</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-conventions-and-definitions" class="internal xref">Conventions and Definitions</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-bound-message-header-protoc" class="internal xref">Bound Message Header Protocol</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.1">
+                <p id="section-toc.1-1.3.2.1.1"><a href="#section-3.1" class="auto internal xref">3.1</a>.  <a href="#name-request-response-serials" class="internal xref">Request/Response Serials</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.2">
+                <p id="section-toc.1-1.3.2.2.1"><a href="#section-3.2" class="auto internal xref">3.2</a>.  <a href="#name-binding-key" class="internal xref">Binding Key</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.3">
+                <p id="section-toc.1-1.3.2.3.1"><a href="#section-3.3" class="auto internal xref">3.3</a>.  <a href="#name-header-specification" class="internal xref">Header Specification</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.4">
+                <p id="section-toc.1-1.3.2.4.1"><a href="#section-3.4" class="auto internal xref">3.4</a>.  <a href="#name-for-discussion-additional-a" class="internal xref">For Discussion: Additional Attributes to Bind?</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.5">
+                <p id="section-toc.1-1.3.2.5.1"><a href="#section-3.5" class="auto internal xref">3.5</a>.  <a href="#name-intermediary-request-handli" class="internal xref">Intermediary Request Handling</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.6">
+                <p id="section-toc.1-1.3.2.6.1"><a href="#section-3.6" class="auto internal xref">3.6</a>.  <a href="#name-downstream-server-request-h" class="internal xref">Downstream Server Request Handling</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.7">
+                <p id="section-toc.1-1.3.2.7.1"><a href="#section-3.7" class="auto internal xref">3.7</a>.  <a href="#name-intermediary-response-handl" class="internal xref">Intermediary Response Handling</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.8">
+                <p id="section-toc.1-1.3.2.8.1"><a href="#section-3.8" class="auto internal xref">3.8</a>.  <a href="#name-handling-100-continue-and-1" class="internal xref">Handling 100 Continue and 103 Early Hints</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.9">
+                <p id="section-toc.1-1.3.2.9.1"><a href="#section-3.9" class="auto internal xref">3.9</a>.  <a href="#name-retrying-requests" class="internal xref">Retrying Requests</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3.2.10">
+                <p id="section-toc.1-1.3.2.10.1"><a href="#section-3.10" class="auto internal xref">3.10</a>. <a href="#name-handling-tls-13-early-data" class="internal xref">Handling TLS 1.3 Early Data</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-use-with-https-over-tls" class="internal xref">Use with HTTPS over TLS</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.1">
+                <p id="section-toc.1-1.4.2.1.1"><a href="#section-4.1" class="auto internal xref">4.1</a>.  <a href="#name-negotiation" class="internal xref">Negotiation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2">
+                <p id="section-toc.1-1.4.2.2.1"><a href="#section-4.2" class="auto internal xref">4.2</a>.  <a href="#name-key-derivation-using-tls-ex" class="internal xref">Key Derivation using TLS Exporters</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1">
+                <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-handling-detection-of-desyn" class="internal xref">Handling detection of desynchronized connections</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2">
+                <p id="section-toc.1-1.5.2.2.1"><a href="#section-5.2" class="auto internal xref">5.2</a>.  <a href="#name-logging-failures" class="internal xref">Logging failures</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.3">
+                <p id="section-toc.1-1.5.2.3.1"><a href="#section-5.3" class="auto internal xref">5.3</a>.  <a href="#name-use-of-keys-negotiated-out-" class="internal xref">Use of keys negotiated out-of-band</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-privacy-considerations" class="internal xref">Privacy considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.1">
+                <p id="section-toc.1-1.8.2.1.1"><a href="#section-8.1" class="auto internal xref">8.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.2">
+                <p id="section-toc.1-1.8.2.2.1"><a href="#section-8.2" class="auto internal xref">8.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-appendix-alternate-approach" class="internal xref">Appendix: Alternate Approaches and Similar Protocols</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-appendix-bikeshed-topics" class="internal xref">Appendix: Bikeshed Topics</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#appendix-C" class="auto internal xref"></a><a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#appendix-D" class="auto internal xref"></a><a href="#name-authors-addresses" class="internal xref">Authors' Addresses</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="introduction">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<div id="motivation">
+<section id="section-1.1">
+        <h3 id="name-motivation">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-motivation" class="section-name selfRef">Motivation</a>
+        </h3>
+<p id="section-1.1-1">HTTP Request Smuggling is a class of desynchronization attack <span>[<a href="#HTTPSYNC" class="cite xref">HTTPSYNC</a>]</span> where a malicious endpoint can cause a chain of other endpoints to get confused about HTTP request framing due to attributes of the HTTP/1.1 protocol leading to ambiguities in interpretation and variations in implementation.  For example, if in a flow of:<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-1.1-2">
+<pre>
+    User Agent =&gt; Intermediary =&gt; Origin Server
+</pre><a href="#section-1.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-1.1-3">the User Agent can send an HTTP request header field with two Content-Length header fields and a Body that contains a second smuggled HTTP request after one of the content lengths.  If the Intermediary and Origin Server interpret the request in different ways, the Intermediary might think that there was one request while the Origin Server thinks there are now two requests. Not only would the first request get smuggled past Intermediary defenses, if there is a second real request (so a total of three requests if you include the smuggled one) then the Intermediary might cache the contents of the smuggled response with the cache key of the third request.<a href="#section-1.1-3" class="pilcrow">¶</a></p>
+<p id="section-1.1-4">There are nigh-infinite variations on this class of attack against HTTP/1.1 with frequent vulnerabilities being found and fixed. While some of these are implemenation bugs, others are due to underspecification in the HTTP/1.1 protocol itself. This latter case is hard for any single party to fix, hence where this specification can act as an additonal line of defense.<a href="#section-1.1-4" class="pilcrow">¶</a></p>
+<p id="section-1.1-5">While HTTP/2 and HTTP/3 are better (<span>[<a href="#RFC9113" class="cite xref">RFC9113</a>]</span> <span>[<a href="#RFC9114" class="cite xref">RFC9114</a>]</span>), conversions between HTTP versions can also be vectors for vulnerabilities here to creep in. Additionally, a malicious User Agent could force an HTTP/1.1 connection to pollute shared resources (a cache or persistent connection) shared with other User Agents using newer HTTP protocols. Furthermore, the simplicity of HTTP/1.1 and large legacy code bases mean that there is extensive use of HTTP/1.1 in Intermediaries such as reverse proxies in the ecosystem: Origin Servers themselves may have an implementation where an Intermediary proxy fronts application servers, each of which having distinct HTTP implementations potentially from different vendors.<a href="#section-1.1-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="mitigation-overview">
+<section id="section-1.2">
+        <h3 id="name-mitigation-overview">
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-mitigation-overview" class="section-name selfRef">Mitigation Overview</a>
+        </h3>
+<p id="section-1.2-1">The key concept of this specification is for HTTP/1.1 endpoints (such as an Intermediary and an Origin Server) to be able to share information about their state (e.g., which request/response they think they're parsing) in a way that is cryptographically bound to the hop-by-hop TLS connection. Since the attacker has no access to the key used for the cryptographic binding, this allows the endpoints to detect desynchronization and fail out but without needing changes to the HTTP/1.1 protocol itself. This shared key is then used to authenticate newly introduced hop-by-hop header fields, binding information in those header fields (which includes sequential request/response serial numbers) to the request. Cases where requests or responses do become desynchronized will be detected due to invalid bound header fields (either due to failing to validate or not matching what is expected).<a href="#section-1.2-1" class="pilcrow">¶</a></p>
+<p id="section-1.2-2">While "Request Framing Confusion" attacks (such as HTTP Request Smuggling or HRS) are one of the most common forms of HTTP Processing Discrepancy attacks, other types of attacks such as Host Confusion can also cause problems (<span>[<a href="#HTTPSYNC" class="cite xref">HTTPSYNC</a>]</span>). This specification focuses on the former, but as it evolves we may be able to extend the approach taken to defend against other forms of attacks such as Host Confusion and Path Confusion, as well as to protect header fields added by Intermediaries.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
+<p id="section-1.2-3"><em>(FOR DISCUSSION: How broadly do we want to scope this specification? How much do we include here, and how much do we leave hooks to enable future extension? At the moment this is intentionally in a middle-ground, and we may either want to simplify or make more general.)</em><a href="#section-1.2-3" class="pilcrow">¶</a></p>
+<p id="section-1.2-4">HTTP endpoints communicating HTTPS over TLS use TLS Exporters to obtain the key used for the binding (<span>[<a href="#RFC8446" class="cite xref">RFC8446</a>], <a href="https://rfc-editor.org/rfc/rfc8446#section-7.5" class="relref">Section 7.5</a></span> <span>[<a href="#RFC5705" class="cite xref">RFC5705</a>]</span>), enabling both endpoints of a connection to securely derive this key out-of-band from the request flow in a way that can't be tampered with. The use of Message Binding header fields is also negotiated during the TLS handshake.<a href="#section-1.2-4" class="pilcrow">¶</a></p>
+<p id="section-1.2-5">The key used for the binding is abstracted out, so proprietary implementations not using TLS can distribute the key in some other manner, such as in a preface attribute that could be added to the PROXY protocol <span>[<a href="#PROXY" class="cite xref">PROXY</a>]</span>.<a href="#section-1.2-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="illustrative-example">
+<section id="section-1.3">
+        <h3 id="name-illustrative-example">
+<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-illustrative-example" class="section-name selfRef">Illustrative Example</a>
+        </h3>
+<p id="section-1.3-1">In an example HRS attack from a malicious User Agent to an Origin Server through an Intermediary, the request might start out normally but the malicious User Agent smuggles a second malicious request into the initial request (e.g., due to a bug in the Intermediary or due to the Intermediary and Origin Server interpreting the HTTP/1.1 protocol slightly differently).<a href="#section-1.3-1" class="pilcrow">¶</a></p>
+<p id="section-1.3-2"><em>(TODO: Add a diagram)</em><a href="#section-1.3-2" class="pilcrow">¶</a></p>
+<p id="section-1.3-3">The net result is that the Intermediary and Origin Server get desynchronized as to how requests and responses line up. When the malicious User Agent makes a second request, it gets back the response to the smuggled request, and a caching Intermediary may actually cache the response to the smuggled request with the cache key of this second request. This means the attacker can not only bypass any controls the Intermediary may be implementing, but may also be able to poison its cache.<a href="#section-1.3-3" class="pilcrow">¶</a></p>
+<p id="section-1.3-4">With the proposed mitigation, the Intermediary augments the first and second requests (from its perspective) with cryptographically protected hop-by-hop <code>Bound-Request</code> header fields indicating a serial number (e.g., 1 and 2). While the Origin Server is able to validate the header field in the first request, the smuggled request is missing the header field (and even if the attacker tried to add one it would fail validation due to the attacker not having the cryptographic secret). This allows the Origin Server to detect the desynchronization, enabling it to refuse to process the smuggled request and terminate the connection.<a href="#section-1.3-4" class="pilcrow">¶</a></p>
+<p id="section-1.3-5"><em>(TODO: Add a diagram)</em><a href="#section-1.3-5" class="pilcrow">¶</a></p>
+<p id="section-1.3-6">Request Smuggling is a family of attacks with many variations. This is why it's valuable to include the request and response binding hop-by-hop header fields in both directions, as in some other variations it might be possible for things to get reordered such that an Intermediary making request A with serial=1 might get back a response for a request C with serial=2 and needs to be able to fail on that as well, as well as any wide range of other similar cases of desynchronization.<a href="#section-1.3-6" class="pilcrow">¶</a></p>
+<p id="section-1.3-7">The need for a cryptographic binding to the channel between the Intermediary and Downstream Server (e.g., with TLS Exporters) is required to prevent the malicious User Agent from including a fake request binding header field in what is being smuggled in (which by its nature may be invisible to the Intermediary due to some bug or vulnerability).<a href="#section-1.3-7" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="conventions-and-definitions">
+<section id="section-2">
+      <h2 id="name-conventions-and-definitions">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-conventions-and-definitions" class="section-name selfRef">Conventions and Definitions</a>
+      </h2>
+<p id="section-2-1">The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>", "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>", "<span class="bcp14">SHALL NOT</span>", "<span class="bcp14">SHOULD</span>", "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>", "<span class="bcp14">NOT RECOMMENDED</span>",
+"<span class="bcp14">MAY</span>", and "<span class="bcp14">OPTIONAL</span>" in this document are to be interpreted as
+described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span> <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span> when, and only when, they
+appear in all capitals, as shown here.<a href="#section-2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="bound-message-header-protocol">
+<section id="section-3">
+      <h2 id="name-bound-message-header-protoc">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-bound-message-header-protoc" class="section-name selfRef">Bound Message Header Protocol</a>
+      </h2>
+<p id="section-3-1">This specification introduces new hop-by-hop <code>Bound-Request</code> and <code>Bound-Response</code> message header fields, which use <span>[<a href="#RFC8941" class="cite xref">RFC8941</a>]</span> structured fields. These header fields convey a request/response Serial number, additional attributes, and a cryptographic binding.<a href="#section-3-1" class="pilcrow">¶</a></p>
+<p id="section-3-2">As these are hop-by-hop header fields they are added by the endpoints on the HTTP/1.1 persistent connection (<span>[<a href="#RFC9112" class="cite xref">RFC9112</a>]</span>). Below we refer to the outbound endpoint making the request as the Intermediary (<span>[<a href="#RFC9110" class="cite xref">RFC9110</a>], <a href="https://rfc-editor.org/rfc/rfc9110#section-3.7" class="relref">Section 3.7</a></span>) and the inbound endpoint receiving the request and issuing a response as the Downstream Server. The Downstream Server may be either another Intermediary or an Origin Server.<a href="#section-3-2" class="pilcrow">¶</a></p>
+<p id="section-3-3">Intermediaries and Downstream Servers <span class="bcp14">MUST NOT</span> exchange <code>Bound-Request</code> and <code>Bound-Response</code> header fields unless they have mutually negotiated this protocol, either as described below in <a href="#tls-negotiation" class="auto internal xref">Section 4.1</a> or via some other out-of-band mechanism. If the User Agent and Downstream Server have negotiated using this protocol for a connection, they <span class="bcp14">MUST</span> send a <code>Bound-Request</code> and <code>Bound-Response</code> header fields in all requests and responses on that connection.<a href="#section-3-3" class="pilcrow">¶</a></p>
+<div id="serials">
+<section id="section-3.1">
+        <h3 id="name-request-response-serials">
+<a href="#section-3.1" class="section-number selfRef">3.1. </a><a href="#name-request-response-serials" class="section-name selfRef">Request/Response Serials</a>
+        </h3>
+<p id="section-3.1-1">The Request Serial (<code>$req_serial</code>) is a counter starting at 1 for the initial request in an HTTP/1.1 persistent connection, and then incrementing by 1 for each subsequent request. The Response Serial (<code>$resp_serial</code>) for a response is then reflected back to match the Request Serial from the corresponding request.<a href="#section-3.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="binding-key">
+<section id="section-3.2">
+        <h3 id="name-binding-key">
+<a href="#section-3.2" class="section-number selfRef">3.2. </a><a href="#name-binding-key" class="section-name selfRef">Binding Key</a>
+        </h3>
+<p id="section-3.2-1">The Binding Key is a binary cryptographic value that is associated with the connection. Below we will refer to the binding key for requests as <code>$req_key</code> and the binding key for responses as <code>$resp_key</code>.<a href="#section-3.2-1" class="pilcrow">¶</a></p>
+<p id="section-3.2-2">With HTTPS over TLS the binding keys <span class="bcp14">MUST</span> be derived as described in <a href="#keying-from-tls-exporters" class="auto internal xref">Section 4.2</a>.<a href="#section-3.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="header-spec">
+<section id="section-3.3">
+        <h3 id="name-header-specification">
+<a href="#section-3.3" class="section-number selfRef">3.3. </a><a href="#name-header-specification" class="section-name selfRef">Header Specification</a>
+        </h3>
+<p id="section-3.3-1">The <code>Bound-Request</code> and <code>Bound-Response</code> header fields are specified as an integer item (the Serial) followed by a parameter list of items.<a href="#section-3.3-1" class="pilcrow">¶</a></p>
+<p id="section-3.3-2">The ABNF is as follows:<a href="#section-3.3-2" class="pilcrow">¶</a></p>
+<div class="lang-abnf sourcecode" id="section-3.3-3">
+<pre>
+bound_header      = bound_header_name ":" serial ";" OWS
+                    "method=" method ";" OWS
+                    "authority=" authority ";" OWS
+                    ("response-code" = response_code ";" OWS)?
+                    "binding=" binding_value
+bound_header_name = "Bound-Request" | "Bound-Response"
+serial            = sf-integer
+method            = sf-string
+authority         = sf-string
+response_code     = sf-integer
+binding_value     = sf-binary
+</pre><a href="#section-3.3-3" class="pilcrow">¶</a>
+</div>
+<p id="section-3.3-4"><em>(TODO: restructure the ABNF to allow the parameter orders to vary)</em><a href="#section-3.3-4" class="pilcrow">¶</a></p>
+<p id="section-3.3-5">The binding value for a request or response with a given key (<code>$req_key</code> or <code>$resp_key</code>) is constructed as:<a href="#section-3.3-5" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-3.3-6">
+<pre>
+   binding_value = HMAC-SHA256($key, $serial "|" $method "|" authority)
+</pre><a href="#section-3.3-6" class="pilcrow">¶</a>
+</div>
+<p id="section-3.3-7">In the above:<a href="#section-3.3-7" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-3.3-8.1">
+            <p id="section-3.3-8.1.1"><code>$key</code> is the <code>$req_key</code> or <code>$resp_key</code><a href="#section-3.3-8.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.3-8.2">
+            <p id="section-3.3-8.2.1"><code>$serial</code> is the request or response serial as a string<a href="#section-3.3-8.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.3-8.3">
+            <p id="section-3.3-8.3.1"><code>$method</code> is the HTTP request method associated with the request<a href="#section-3.3-8.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.3-8.4">
+            <p id="section-3.3-8.4.1"><code>$authority</code> is the authority ((as defined in <span>[<a href="#RFC9110" class="cite xref">RFC9110</a>], <a href="https://rfc-editor.org/rfc/rfc9110#section-4.2.3" class="relref">Section 4.2.3</a></span>) from the normalized URI (as defined in <span>[<a href="#RFC9110" class="cite xref">RFC9110</a>], <a href="https://rfc-editor.org/rfc/rfc9110#section-4.2.3" class="relref">Section 4.2.3</a></span>) for the request  and <span class="bcp14">MUST</span> match the value in the request's Host header field<a href="#section-3.3-8.4.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.3-8.5">
+            <p id="section-3.3-8.5.1"><code>$response_code</code> is the response code for the response<a href="#section-3.3-8.5.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.3-8.6">
+            <p id="section-3.3-8.6.1">The binding value construct uses HMAC-SHA256 (<span>[<a href="#RFC2104" class="cite xref">RFC2104</a>]</span>)<a href="#section-3.3-8.6.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-3.3-9"><em>(TODO: consider whether/how to add crypto agility for other keyed MACs)</em><a href="#section-3.3-9" class="pilcrow">¶</a></p>
+<p id="section-3.3-10">For example, the header field added to the first request on a connection might be:<a href="#section-3.3-10" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-3.3-11">
+<pre>
+   Bound-Request: 1; method=POST; authority=www.example.com;
+                  binding=:yYwktnfv9Ehgr+pvSTu67FuxxMuyCcb8K7tH9m/yrTE=:
+</pre><a href="#section-3.3-11" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="for-discussion-additional-attributes-to-bind">
+<section id="section-3.4">
+        <h3 id="name-for-discussion-additional-a">
+<a href="#section-3.4" class="section-number selfRef">3.4. </a><a href="#name-for-discussion-additional-a" class="section-name selfRef">For Discussion: Additional Attributes to Bind?</a>
+        </h3>
+<p id="section-3.4-1"><em>FOR DISCUSSION: Do we want to add in additional information to defend against additional sorts of attacks?  Would we want to change how we encode these?</em><a href="#section-3.4-1" class="pilcrow">¶</a></p>
+<p id="section-3.4-2">The reasons to include attributes into the Message Binding are:<a href="#section-3.4-2" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-3.4-3.1">
+            <p id="section-3.4-3.1.1">Information from an Intermediary or Origin Server endpoint is intermixed in the bytestream with information that was sourced from a potentially malicious User Agent. HTTP/2 and HTTP/3 use distinct pseudoheaders to encode some of these separately, but other header fields such as Client-Cert (<span>[<a href="#RFC9440" class="cite xref">RFC9440</a>]</span>) have no such protections.<a href="#section-3.4-3.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.4-3.2">
+            <p id="section-3.4-3.2.1">The encoding within HTTP/1.1 is underspecified in ways that lead to ambiguity, such as with variations in Path and Host header field parsing.<a href="#section-3.4-3.2.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-3.4-4">Some options might include:<a href="#section-3.4-4" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-3.4-5.1">
+            <p id="section-3.4-5.1.1">Adding the <code>:path</code> as a parameter (or adding an attribute indicating that it should be considered included) and also binding it in.<a href="#section-3.4-5.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.4-5.2">
+            <p id="section-3.4-5.2.1">Having a way to more generally encode HTTP/2 pseudoheader field values in a way that is less ambiguous (converted to sf-binary?) and gets bound in.<a href="#section-3.4-5.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.4-5.3">
+            <p id="section-3.4-5.3.1">Including a list of header fields to bind in, and then use <span>[<a href="#RFC9421" class="cite xref">RFC9421</a>]</span> HTTP Message Signatures or similar to protect them. This would be particularly useful for protecting header fields such as Client-Cert.<a href="#section-3.4-5.3.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-3.4-6">Adding more in does add more complexity and has more risks of compatibility issues. It may also be worth considering going the other direction and removing method and authority parameters.<a href="#section-3.4-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="upstream-req-handling">
+<section id="section-3.5">
+        <h3 id="name-intermediary-request-handli">
+<a href="#section-3.5" class="section-number selfRef">3.5. </a><a href="#name-intermediary-request-handli" class="section-name selfRef">Intermediary Request Handling</a>
+        </h3>
+<p id="section-3.5-1">Intermediaries which have negotiated this protocol <span class="bcp14">MUST</span> add a <code>Bound-Request</code> header field with each request they make.  The <code>$req_serial</code> <span class="bcp14">MUST</span> start at 1 for the first request on a persistent connection, and <span class="bcp14">MUST</span> be incremented by 1 for each subsequent request.<a href="#section-3.5-1" class="pilcrow">¶</a></p>
+<p id="section-3.5-2">If the Intermediary is an Intermediary, regardless of whether or not this protocol was negotiated for the connection, it <span class="bcp14">MUST</span> remove any <code>Bound-Request</code> header fields that it received (prior to adding its own, if applicable).<a href="#section-3.5-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="downstream-req-handling">
+<section id="section-3.6">
+        <h3 id="name-downstream-server-request-h">
+<a href="#section-3.6" class="section-number selfRef">3.6. </a><a href="#name-downstream-server-request-h" class="section-name selfRef">Downstream Server Request Handling</a>
+        </h3>
+<p id="section-3.6-1">Downstream Servers which have negotiated this protocol <span class="bcp14">MUST</span> validate the presence and contents of the <code>Bound-Request</code> header field prior to processing a request. Any failures <span class="bcp14">MUST</span> be detected early in request processing (such as during request parsing), and Downstream Servers <span class="bcp14">MUST</span> immediately terminate the connection without returning an error response.<a href="#section-3.6-1" class="pilcrow">¶</a></p>
+<p id="section-3.6-2">Validation checks <span class="bcp14">MUST</span> include:<a href="#section-3.6-2" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-3.6-3.1">
+            <p id="section-3.6-3.1.1">Confirmation that the <code>Bound-Request</code> header field is present<a href="#section-3.6-3.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.6-3.2">
+            <p id="section-3.6-3.2.1">Confirmation that the cryptographic binding hash matches what was expected<a href="#section-3.6-3.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.6-3.3">
+            <p id="section-3.6-3.3.1">Confirmation that the <code>$req_serial</code> matches what was expected, starting at 1 for the first request on the connection and incrementing by 1 for each subsequent request<a href="#section-3.6-3.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.6-3.4">
+            <p id="section-3.6-3.4.1">Confirmation that the authority and method match those in the request<a href="#section-3.6-3.4.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-3.6-4">If the Downstream Server is an Intermediary, it <span class="bcp14">MUST</span> remove the <code>Bound-Request</code> header field before constructing a request to the next-hop, regardless of whether this protocol is used for the next-hop.<a href="#section-3.6-4" class="pilcrow">¶</a></p>
+<p id="section-3.6-5">When constructing a response to the HTTP request the Downstream Server <span class="bcp14">MUST</span> add a <code>Bound-Response</code> header field with a <code>$resp_serial</code> matching the <code>$req_serial</code> of the incoming request.<a href="#section-3.6-5" class="pilcrow">¶</a></p>
+<p id="section-3.6-6">If the Downstream Server is an Intermediary, it <span class="bcp14">MUST</span> first remove any <code>Bound-Response</code> header fields that it received, regardless of whether this protocol is used on the previous-hop.<a href="#section-3.6-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="upstream-resp-handling">
+<section id="section-3.7">
+        <h3 id="name-intermediary-response-handl">
+<a href="#section-3.7" class="section-number selfRef">3.7. </a><a href="#name-intermediary-response-handl" class="section-name selfRef">Intermediary Response Handling</a>
+        </h3>
+<p id="section-3.7-1">Intermediaries which have negotiated this protocol <span class="bcp14">MUST</span> validate the presence and contents of the <code>Bound-Response</code> header field prior to processing a response. Any failures <span class="bcp14">MUST</span> be detected early in response processing (such as during response parsing), and Intermediaries <span class="bcp14">MUST</span> immediately terminate the connection without processing any data from the response.<a href="#section-3.7-1" class="pilcrow">¶</a></p>
+<p id="section-3.7-2">Validation checks <span class="bcp14">MUST</span> include:<a href="#section-3.7-2" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-3.7-3.1">
+            <p id="section-3.7-3.1.1">Confirmation that the <code>Bound-Response</code> header field is present<a href="#section-3.7-3.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.7-3.2">
+            <p id="section-3.7-3.2.1">Confirmation that the cryptographic binding MAC matches what was expected<a href="#section-3.7-3.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.7-3.3">
+            <p id="section-3.7-3.3.1">Confirmation that the <code>$resp_serial</code> matches the <code>$req_serial</code> of the request that the response is in-response to.<a href="#section-3.7-3.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.7-3.4">
+            <p id="section-3.7-3.4.1">Confirmation that the authority and method match those from the corresponding request<a href="#section-3.7-3.4.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-3.7-3.5">
+            <p id="section-3.7-3.5.1">Confirmation that the <code>$response_code</code> matches that from the response (or interim response, as discussed in <a href="#handling-1xx" class="auto internal xref">Section 3.8</a>)<a href="#section-3.7-3.5.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-3.7-4">The Intermediary <span class="bcp14">MUST</span> remove the <code>Bound-Response</code> header field before constructing a response to the previous-hop, regardless of whether this protocol is used for the previous-hop.<a href="#section-3.7-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="handling-1xx">
+<section id="section-3.8">
+        <h3 id="name-handling-100-continue-and-1">
+<a href="#section-3.8" class="section-number selfRef">3.8. </a><a href="#name-handling-100-continue-and-1" class="section-name selfRef">Handling 100 Continue and 103 Early Hints</a>
+        </h3>
+<p id="section-3.8-1">When using <code>100 Continue</code> and <code>103 Early Hints</code>, the <code>$req_serial</code> and <code>$resp_serial</code> <span class="bcp14">MUST</span> remain the same and match for all interim and final responses. Each interim response <span class="bcp14">MUST</span> contain a <code>Bound-Response</code> header field with a response-code parameter matching the response code of the interim response.<a href="#section-3.8-1" class="pilcrow">¶</a></p>
+<p id="section-3.8-2"><em>(TODO can we safely extend this requirement to all 1xx status codes?)</em><a href="#section-3.8-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="retry-handling">
+<section id="section-3.9">
+        <h3 id="name-retrying-requests">
+<a href="#section-3.9" class="section-number selfRef">3.9. </a><a href="#name-retrying-requests" class="section-name selfRef">Retrying Requests</a>
+        </h3>
+<p id="section-3.9-1">Requests which are retried <span class="bcp14">MUST</span> be treated no differently than other forms of request, with their <code>$req_serial</code> coming from the order of the request in a persistent connection. If a request is retried over a different connection a new <code>Bound-Request</code> header field <span class="bcp14">MUST</span> be reconstructed corresponding to the new connection.<a href="#section-3.9-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="tls13-0rtt">
+<section id="section-3.10">
+        <h3 id="name-handling-tls-13-early-data">
+<a href="#section-3.10" class="section-number selfRef">3.10. </a><a href="#name-handling-tls-13-early-data" class="section-name selfRef">Handling TLS 1.3 Early Data</a>
+        </h3>
+<p id="section-3.10-1"><em>TODO: define how this works with TLS 1.3 0RTT as it adds additional wrinkles. While this maybe could be made to work there (e.g., using the separate early exporter secret and a distinct space for request_serials) <span>[<a href="#RFC8446" class="cite xref">RFC8446</a>]</span>, we need to ensure that we properly handle situations where an HTTP request spans 0-RTT and 1-RTT data.</em><a href="#section-3.10-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="use-with-https-over-tls">
+<section id="section-4">
+      <h2 id="name-use-with-https-over-tls">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-use-with-https-over-tls" class="section-name selfRef">Use with HTTPS over TLS</a>
+      </h2>
+<div id="tls-negotiation">
+<section id="section-4.1">
+        <h3 id="name-negotiation">
+<a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-negotiation" class="section-name selfRef">Negotiation</a>
+        </h3>
+<p id="section-4.1-1">Since the <code>Bound-Request</code> header field is hop-by-hop header field it is not safe to send unless the Intermediary knows that recipient supports it, will process it, and then will remove it. Intermediaries and Downstream Servers <span class="bcp14">MUST NOT</span> send <code>Bound-Request</code> or <code>Bound-Response</code> header fields on connections where they have not negotiated this protocol.<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+<p id="section-4.1-2">Negotiation needs to happen out-of-band (e.g., at the TLS layer) due to the nature of the attacks this is trying to mitigate.<a href="#section-4.1-2" class="pilcrow">¶</a></p>
+<p id="section-4.1-3">Options for negotiation include:<a href="#section-4.1-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-4.1-4.1">
+            <p id="section-4.1-4.1.1">ALPS (stalled/expired) <span>[<a href="#I-D.vvv-tls-alps" class="cite xref">I-D.vvv-tls-alps</a>]</span><a href="#section-4.1-4.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-4.1-4.2">
+            <p id="section-4.1-4.2.1">TLS Extension Flags (waiting on implementation) <span>[<a href="#I-D.ietf-tls-tlsflags" class="cite xref">I-D.ietf-tls-tlsflags</a>]</span><a href="#section-4.1-4.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-4.1-4.3">
+            <p id="section-4.1-4.3.1">An all-new TLS extension specific to this purpose, which could also make it easier to version this protocol.<a href="#section-4.1-4.3.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-4.1-5">Note that the first two options only support TLS 1.3 <span>[<a href="#RFC8446" class="cite xref">RFC8446</a>]</span> between the Intermediary and Downstream Server.<a href="#section-4.1-5" class="pilcrow">¶</a></p>
+<p id="section-4.1-6">It would also be preferable for the mechanism here to negotiate the supported versions of this protocol, such as if cryptographic agility or additional functionality is needed.<a href="#section-4.1-6" class="pilcrow">¶</a></p>
+<p id="section-4.1-7">Application Protocols (ALPN values, per <span>[<a href="#RFC7301" class="cite xref">RFC7301</a>]</span>) other than "http/1.1" are not supported, and a Downstream Server <span class="bcp14">MUST NOT</span> negotiate this Request-Binding protocol when negotiating an application protocol other than "http/1.1".<a href="#section-4.1-7" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="keying-from-tls-exporters">
+<section id="section-4.2">
+        <h3 id="name-key-derivation-using-tls-ex">
+<a href="#section-4.2" class="section-number selfRef">4.2. </a><a href="#name-key-derivation-using-tls-ex" class="section-name selfRef">Key Derivation using TLS Exporters</a>
+        </h3>
+<p id="section-4.2-1">The <code>$req_key</code> and <code>$resp_key</code> are derived using TLS Exporters.<a href="#section-4.2-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-4.2-2.1">
+            <p id="section-4.2-2.1.1">For TLS 1.3 this is specified in <span>[<a href="#RFC8446" class="cite xref">RFC8446</a>], <a href="https://rfc-editor.org/rfc/rfc8446#section-7.5" class="relref">Section 7.5</a></span><a href="#section-4.2-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-4.2-2.2">
+            <p id="section-4.2-2.2.1">For TLS 1.2 this is specified in <span>[<a href="#RFC5705" class="cite xref">RFC5705</a>]</span><a href="#section-4.2-2.2.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-4.2-3">Endpoints <span class="bcp14">MAY</span> support TLS 1.2 using <span>[<a href="#RFC5705" class="cite xref">RFC5705</a>]</span>, but if they do they <span class="bcp14">MUST</span> only use this extension when the extended master secret (<span>[<a href="#RFC7627" class="cite xref">RFC7627</a>]</span>) extension is also used. Endpoints <span class="bcp14">MUST NOT</span> use this protocol for versions of TLS prior to 1.2.<a href="#section-4.2-3" class="pilcrow">¶</a></p>
+<p id="section-4.2-4">The request and response keys are constructed for a connection with:<a href="#section-4.2-4" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-4.2-5">
+<pre>
+$req_key = TLS-Exporter("HTTP-Request-Binding", "request-"+$alpn, 32)
+$resp_key = TLS-Exporter("HTTP-Request-Binding", "response-"+$alpn, 32)
+</pre><a href="#section-4.2-5" class="pilcrow">¶</a>
+</div>
+<p id="section-4.2-6">The added context ensures that we get different keys derived for different negotiated ALPNs. When HTTP/1.1 was negotiated without an ALPN, <code>$alpn</code> <span class="bcp14">SHALL</span> be <code>http/1.1</code>.<a href="#section-4.2-6" class="pilcrow">¶</a></p>
+<p id="section-4.2-7">When this extension is negotiated, HTTP requests that indicate an HTTP-version other than HTTP/1.1 <span class="bcp14">MUST</span> be rejected, with the connection closed prior to sending an HTTP-layer response.<a href="#section-4.2-7" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="security-considerations">
+<section id="section-5">
+      <h2 id="name-security-considerations">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<div id="handling-detection-of-desynchronized-connections">
+<section id="section-5.1">
+        <h3 id="name-handling-detection-of-desyn">
+<a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-handling-detection-of-desyn" class="section-name selfRef">Handling detection of desynchronized connections</a>
+        </h3>
+<p id="section-5.1-1">When an endpoint detects desynchronization (due to a missing or invalid Message Binding header field) it needs to consider itself to be in an unknown, inconsistent, and potentially adversary-controlled state. Any processing that happens past this point for this or other requests on the connection is dangerous and suspect, as nothing in the connection bytestream can be trusted at this point. Letting the request or response get past validation failures during parsing would leave the endpoint vulnerable and might execute smuggled instructions.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+<p id="section-5.1-2">Returning an HTTP error response would be bad as this response would be desynchronized and could be cached. While breaking the connection does not provide information to Intermediaries as to why things broke, it is imperative to terminate immediately.<a href="#section-5.1-2" class="pilcrow">¶</a></p>
+<p id="section-5.1-3"><em>TODO: explore if there may be a way to use a TLS alert to signal that badness happened to the other endpoint.</em><a href="#section-5.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="logging-failures">
+<section id="section-5.2">
+        <h3 id="name-logging-failures">
+<a href="#section-5.2" class="section-number selfRef">5.2. </a><a href="#name-logging-failures" class="section-name selfRef">Logging failures</a>
+        </h3>
+<p id="section-5.2-1">Endpoints <span class="bcp14">SHOULD</span> log information indicating why the request or connection failed. Even more care than usual needs to be taken handling information received as there is no way to distinguish information as having come from a potentially trusted Intermediary vs having come from a malicious adversary.<a href="#section-5.2-1" class="pilcrow">¶</a></p>
+<p id="section-5.2-2">Downstream Servers logging information from detected smuggled requests need to take care as all information is suspect. It is critical that validation (and fail-out) happens very early in handling the request, such as during the request/response parsing itself. Even logging things from the smuggled request must be handled very carefully.<a href="#section-5.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="use-of-keys-negotiated-out-of-band">
+<section id="section-5.3">
+        <h3 id="name-use-of-keys-negotiated-out-">
+<a href="#section-5.3" class="section-number selfRef">5.3. </a><a href="#name-use-of-keys-negotiated-out-" class="section-name selfRef">Use of keys negotiated out-of-band</a>
+        </h3>
+<p id="section-5.3-1">With the use of TLS Exporters each connection gets a unique pair of <code>$req_key</code> and <code>$resp_key</code>. If an alternate mechanism is used by proprietary implementations to exchange these keys then they <span class="bcp14">MUST</span> be unique per connection. Otherwise an attacker who can get a request header reflected back from one connection might be able to replay it in another connection.<a href="#section-5.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="privacy-considerations">
+<section id="section-6">
+      <h2 id="name-privacy-considerations">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-privacy-considerations" class="section-name selfRef">Privacy considerations</a>
+      </h2>
+<p id="section-6-1">Due to this protocol primarily being used between Intermediaries and Downstream Servers, information sent by the Intermediary during the TLS handshake for negotiation does not cause privacy issues for end-users. If this protocol were to be extended into end-user User Agents as well, more evaluation of privacy considerations would be warranted.<a href="#section-6-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="iana-considerations">
+<section id="section-7">
+      <h2 id="name-iana-considerations">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<p id="section-7-1"><em>TODO: Add IANA considerations for the HTTP Headers, for TLS Exporter labels, and for the TLS extension details used for negotiation.</em><a href="#section-7-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sec-combined-references">
+<section id="section-8">
+      <h2 id="name-references">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<div id="sec-normative-references">
+<section id="section-8.1">
+        <h3 id="name-normative-references">
+<a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="RFC2104">[RFC2104]</dt>
+        <dd>
+<span class="refAuthor">Krawczyk, H.</span>, <span class="refAuthor">Bellare, M.</span>, and <span class="refAuthor">R. Canetti</span>, <span class="refTitle">"HMAC: Keyed-Hashing for Message Authentication"</span>, <span class="seriesInfo">RFC 2104</span>, <span class="seriesInfo">DOI 10.17487/RFC2104</span>, <time datetime="1997-02" class="refDate">February 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc2104">https://www.rfc-editor.org/rfc/rfc2104</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2119">[RFC2119]</dt>
+        <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc2119">https://www.rfc-editor.org/rfc/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC5705">[RFC5705]</dt>
+        <dd>
+<span class="refAuthor">Rescorla, E.</span>, <span class="refTitle">"Keying Material Exporters for Transport Layer Security (TLS)"</span>, <span class="seriesInfo">RFC 5705</span>, <span class="seriesInfo">DOI 10.17487/RFC5705</span>, <time datetime="2010-03" class="refDate">March 2010</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc5705">https://www.rfc-editor.org/rfc/rfc5705</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7301">[RFC7301]</dt>
+        <dd>
+<span class="refAuthor">Friedl, S.</span>, <span class="refAuthor">Popov, A.</span>, <span class="refAuthor">Langley, A.</span>, and <span class="refAuthor">E. Stephan</span>, <span class="refTitle">"Transport Layer Security (TLS) Application-Layer Protocol Negotiation Extension"</span>, <span class="seriesInfo">RFC 7301</span>, <span class="seriesInfo">DOI 10.17487/RFC7301</span>, <time datetime="2014-07" class="refDate">July 2014</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7301">https://www.rfc-editor.org/rfc/rfc7301</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7627">[RFC7627]</dt>
+        <dd>
+<span class="refAuthor">Bhargavan, K., Ed.</span>, <span class="refAuthor">Delignat-Lavaud, A.</span>, <span class="refAuthor">Pironti, A.</span>, <span class="refAuthor">Langley, A.</span>, and <span class="refAuthor">M. Ray</span>, <span class="refTitle">"Transport Layer Security (TLS) Session Hash and Extended Master Secret Extension"</span>, <span class="seriesInfo">RFC 7627</span>, <span class="seriesInfo">DOI 10.17487/RFC7627</span>, <time datetime="2015-09" class="refDate">September 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7627">https://www.rfc-editor.org/rfc/rfc7627</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+        <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8174">https://www.rfc-editor.org/rfc/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8446">[RFC8446]</dt>
+        <dd>
+<span class="refAuthor">Rescorla, E.</span>, <span class="refTitle">"The Transport Layer Security (TLS) Protocol Version 1.3"</span>, <span class="seriesInfo">RFC 8446</span>, <span class="seriesInfo">DOI 10.17487/RFC8446</span>, <time datetime="2018-08" class="refDate">August 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8446">https://www.rfc-editor.org/rfc/rfc8446</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8941">[RFC8941]</dt>
+        <dd>
+<span class="refAuthor">Nottingham, M.</span> and <span class="refAuthor">P. Kamp</span>, <span class="refTitle">"Structured Field Values for HTTP"</span>, <span class="seriesInfo">RFC 8941</span>, <span class="seriesInfo">DOI 10.17487/RFC8941</span>, <time datetime="2021-02" class="refDate">February 2021</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8941">https://www.rfc-editor.org/rfc/rfc8941</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9110">[RFC9110]</dt>
+        <dd>
+<span class="refAuthor">Fielding, R., Ed.</span>, <span class="refAuthor">Nottingham, M., Ed.</span>, and <span class="refAuthor">J. Reschke, Ed.</span>, <span class="refTitle">"HTTP Semantics"</span>, <span class="seriesInfo">STD 97</span>, <span class="seriesInfo">RFC 9110</span>, <span class="seriesInfo">DOI 10.17487/RFC9110</span>, <time datetime="2022-06" class="refDate">June 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9110">https://www.rfc-editor.org/rfc/rfc9110</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9112">[RFC9112]</dt>
+      <dd>
+<span class="refAuthor">Fielding, R., Ed.</span>, <span class="refAuthor">Nottingham, M., Ed.</span>, and <span class="refAuthor">J. Reschke, Ed.</span>, <span class="refTitle">"HTTP/1.1"</span>, <span class="seriesInfo">STD 99</span>, <span class="seriesInfo">RFC 9112</span>, <span class="seriesInfo">DOI 10.17487/RFC9112</span>, <time datetime="2022-06" class="refDate">June 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9112">https://www.rfc-editor.org/rfc/rfc9112</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="sec-informative-references">
+<section id="section-8.2">
+        <h3 id="name-informative-references">
+<a href="#section-8.2" class="section-number selfRef">8.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="HTTPSYNC">[HTTPSYNC]</dt>
+        <dd>
+<span class="refAuthor">Topcuoglu, C.</span>, <span class="refAuthor">Onarlioglu, K.</span>, <span class="refAuthor">Sprecher, S.</span>, <span class="refAuthor">Kirda, E.</span>, and <span class="refAuthor">Northeastern University</span>, <span class="refTitle">"HTTP Request Synchronization Defeats Discrepancy Attacks"</span>, <span class="seriesInfo">arXiv 2510.09952</span>, <time datetime="2025-10" class="refDate">October 2025</time>, <span>&lt;<a href="https://arxiv.org/abs/2510.09952">https://arxiv.org/abs/2510.09952</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.ietf-tls-tlsflags">[I-D.ietf-tls-tlsflags]</dt>
+        <dd>
+<span class="refAuthor">Nir, Y.</span>, <span class="refTitle">"A Flags Extension for TLS 1.3"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-tls-tlsflags-16</span>, <time datetime="2025-09-14" class="refDate">14 September 2025</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-tls-tlsflags-16">https://datatracker.ietf.org/doc/html/draft-ietf-tls-tlsflags-16</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.vvv-tls-alps">[I-D.vvv-tls-alps]</dt>
+        <dd>
+<span class="refAuthor">Benjamin, D.</span> and <span class="refAuthor">V. Vasiliev</span>, <span class="refTitle">"TLS Application-Layer Protocol Settings Extension"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-vvv-tls-alps-01</span>, <time datetime="2020-09-21" class="refDate">21 September 2020</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-vvv-tls-alps-01">https://datatracker.ietf.org/doc/html/draft-vvv-tls-alps-01</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="PROXY">[PROXY]</dt>
+        <dd>
+<span class="refAuthor">HAProxy Technologies</span>, <span class="refTitle">"The PROXY protocol"</span>, <time datetime="2017" class="refDate">2017</time>, <span>&lt;<a href="https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt">https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9113">[RFC9113]</dt>
+        <dd>
+<span class="refAuthor">Thomson, M., Ed.</span> and <span class="refAuthor">C. Benfield, Ed.</span>, <span class="refTitle">"HTTP/2"</span>, <span class="seriesInfo">RFC 9113</span>, <span class="seriesInfo">DOI 10.17487/RFC9113</span>, <time datetime="2022-06" class="refDate">June 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9113">https://www.rfc-editor.org/rfc/rfc9113</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9114">[RFC9114]</dt>
+        <dd>
+<span class="refAuthor">Bishop, M., Ed.</span>, <span class="refTitle">"HTTP/3"</span>, <span class="seriesInfo">RFC 9114</span>, <span class="seriesInfo">DOI 10.17487/RFC9114</span>, <time datetime="2022-06" class="refDate">June 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9114">https://www.rfc-editor.org/rfc/rfc9114</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9261">[RFC9261]</dt>
+        <dd>
+<span class="refAuthor">Sullivan, N.</span>, <span class="refTitle">"Exported Authenticators in TLS"</span>, <span class="seriesInfo">RFC 9261</span>, <span class="seriesInfo">DOI 10.17487/RFC9261</span>, <time datetime="2022-07" class="refDate">July 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9261">https://www.rfc-editor.org/rfc/rfc9261</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9421">[RFC9421]</dt>
+        <dd>
+<span class="refAuthor">Backman, A., Ed.</span>, <span class="refAuthor">Richer, J., Ed.</span>, and <span class="refAuthor">M. Sporny</span>, <span class="refTitle">"HTTP Message Signatures"</span>, <span class="seriesInfo">RFC 9421</span>, <span class="seriesInfo">DOI 10.17487/RFC9421</span>, <time datetime="2024-02" class="refDate">February 2024</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9421">https://www.rfc-editor.org/rfc/rfc9421</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9440">[RFC9440]</dt>
+      <dd>
+<span class="refAuthor">Campbell, B.</span> and <span class="refAuthor">M. Bishop</span>, <span class="refTitle">"Client-Cert HTTP Header Field"</span>, <span class="seriesInfo">RFC 9440</span>, <span class="seriesInfo">DOI 10.17487/RFC9440</span>, <time datetime="2023-07" class="refDate">July 2023</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9440">https://www.rfc-editor.org/rfc/rfc9440</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</div>
+</section>
+</div>
+<div id="appendix-alternate-approaches-and-similar-protocols">
+<section id="appendix-A">
+      <h2 id="name-appendix-alternate-approach">
+<a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-appendix-alternate-approach" class="section-name selfRef">Appendix: Alternate Approaches and Similar Protocols</a>
+      </h2>
+<p id="appendix-A-1">TLS Exporters are used in other protocols such as <span>[<a href="#RFC9261" class="cite xref">RFC9261</a>]</span> (Exported Authenticators in TLS). While it is meant as a building block, it requires round-trips for some scenarios which would make it not suitable here.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="appendix-bikeshed-topics">
+<section id="appendix-B">
+      <h2 id="name-appendix-bikeshed-topics">
+<a href="#appendix-B" class="section-number selfRef">Appendix B. </a><a href="#name-appendix-bikeshed-topics" class="section-name selfRef">Appendix: Bikeshed Topics</a>
+      </h2>
+<p id="appendix-B-1">Some details to work through include:<a href="#appendix-B-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="appendix-B-2.1">
+          <p id="appendix-B-2.1.1">Should the starting serial be 1 or 0?<a href="#appendix-B-2.1.1" class="pilcrow">¶</a></p>
+</li>
+      </ul>
+</section>
+</div>
+<div id="acknowledgments">
+<section id="appendix-C">
+      <h2 id="name-acknowledgments">
+<a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
+      </h2>
+<p id="appendix-C-1">The authors would like to thank Kaan Onarlioglu, Rich Salz, Benjamin Kaduk, Uttaran Dutta, and others who have contributed to this proposal.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="appendix-D">
+      <h2 id="name-authors-addresses">
+<a href="#name-authors-addresses" class="section-name selfRef">Authors' Addresses</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Erik Nygren</span></div>
+<div dir="auto" class="left"><span class="org">Akamai Technologies</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:erik+ietf@nygren.org" class="email">erik+ietf@nygren.org</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Mike Bishop</span></div>
+<div dir="auto" class="left"><span class="org">Akamai Technologies</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:mbishop@evequefou.be" class="email">mbishop@evequefou.be</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>
