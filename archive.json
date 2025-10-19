@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2025-10-16T00:39:12.597058+00:00",
+  "timestamp": "2025-10-19T00:43:59.959685+00:00",
   "repo": "enygren/draft-nygren-httpbis-http11-request-binding",
   "labels": [
     {
@@ -65,6 +65,30 @@
       "updatedAt": "2025-10-15T20:48:37Z",
       "closedAt": null,
       "comments": []
+    },
+    {
+      "number": 5,
+      "id": "I_kwDOQB3wGc7SBA9r",
+      "title": "Consider renaming to \"Message Binding\"",
+      "url": "https://github.com/enygren/draft-nygren-httpbis-http11-request-binding/issues/5",
+      "state": "CLOSED",
+      "author": "enygren",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "From Kaan:  Since this is about both requests and responses, why not \u201cMessage Binding\u201d instead?\n",
+      "createdAt": "2025-10-16T20:54:13Z",
+      "updatedAt": "2025-10-16T22:14:53Z",
+      "closedAt": "2025-10-16T22:14:53Z",
+      "comments": [
+        {
+          "author": "enygren",
+          "authorAssociation": "OWNER",
+          "body": "Will ",
+          "createdAt": "2025-10-16T22:14:53Z",
+          "updatedAt": "2025-10-16T22:14:53Z"
+        }
+      ]
     }
   ],
   "pulls": [
