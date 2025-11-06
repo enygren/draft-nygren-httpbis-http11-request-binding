@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2025-10-19T00:43:59.959685+00:00",
+  "timestamp": "2025-11-06T00:40:47.896515+00:00",
   "repo": "enygren/draft-nygren-httpbis-http11-request-binding",
   "labels": [
     {
@@ -89,6 +89,38 @@
           "updatedAt": "2025-10-16T22:14:53Z"
         }
       ]
+    },
+    {
+      "number": 6,
+      "id": "I_kwDOQB3wGc7WHGCJ",
+      "title": "Incorporate feedback from discussions on-list and in IETF 124 in Montreal",
+      "url": "https://github.com/enygren/draft-nygren-httpbis-http11-request-binding/issues/6",
+      "state": "OPEN",
+      "author": "enygren",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Some things to incorporate (perhaps splitting out as separate issues if not covered in a first pass):\n\n* Clearly define the Threat Model -- is not applicable for the hop from a malicious client to the intermediary\n* Simplify where possible: aim for something that could be in a few hundred lines of code in something like the python HTTP libraries\n* Switch to simpler crypto -- explore what is the most efficient standardized thing we can use\n* Consider if key exchange is actually needed or if we can just seed from the bound header in the first request?\n* Look for negotiation that is easiest to incorporate in existing libraries with minimum/no plumbing (maybe an ALPN?)\n* Possibly: require the header field be last?\n* Possibly: encode all of the pseudo-header equivalents or none of them (authority/path/method)\n\nSince the whole point is something that can be easily and safely retrofit into things which can't switch to H2, focus on deployability over comprehensiveness.\n\n",
+      "createdAt": "2025-11-05T17:51:33Z",
+      "updatedAt": "2025-11-05T17:51:33Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 7,
+      "id": "I_kwDOQB3wGc7WHH_T",
+      "title": "Separate draft for safe HTTP/1.1 deployment considerations",
+      "url": "https://github.com/enygren/draft-nygren-httpbis-http11-request-binding/issues/7",
+      "state": "OPEN",
+      "author": "enygren",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "As suggest by Ben Schwatz and others we may want a separate draft focusing on HTTP/1.1 risks and safety.\nFor example:\n* Discourage any use of pconns and recommend alternatives (eg, connection pools), especially over local connections where RTT isn't a consideration\n* Strongly recommend H2/H3 instead\n* Use this request-binding draft where others aren't possible\n* ... what else?",
+      "createdAt": "2025-11-05T17:53:56Z",
+      "updatedAt": "2025-11-05T17:53:56Z",
+      "closedAt": null,
+      "comments": []
     }
   ],
   "pulls": [
