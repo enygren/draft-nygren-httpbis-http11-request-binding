@@ -63,11 +63,24 @@ informative:
     date: 2025-10
     seriesinfo:
       arXiv: "2510.09952"
+  SIPHASH:
+    title: "SipHash: a fast short-input PRF"
+    author:
+      -
+        ins: J.-P. Aumasson
+        name: Jean-Philippe Aumasson
+      -
+        ins: D. J. Bernstein
+        name: Daniel J. Bernstein
+    date: 2012-09
+    seriesinfo:
+      "INDOCRYPT": "2012"
+    target: "https://cr.yp.to/siphash/siphash-20120918.pdf"
 ...
 
 --- abstract
 
-HTTP/1.1 Message Binding adds new hop-by-hop header fields that are cryptographically bound to requests and responses. The keys used are negotiated out-of-band from the HTTP datastream (such as via TLS Exporters). These header fields allow endpoints to detect and mitigate desynchronization attacks, such as HTTP Request Smuggling, that exist due to datastream handling differences.
+HTTP/1.1 Message Binding adds new hop-by-hop header fields that are cryptographically bound to requests and responses. The use of this protocol is negotiated out-of-band from the HTTP datastream, and keys can be communicated either in-band in the first request or out-of-band (such as via TLS Exporters). These header fields allow endpoints to detect and mitigate desynchronization attacks, such as HTTP Request Smuggling, that exist due to datastream handling differences.
 
 --- middle
 
@@ -87,17 +100,41 @@ There are nigh-infinite variations on this class of attack against HTTP/1.1 with
 
 While HTTP/2 and HTTP/3 are better ({{RFC9113}} {{RFC9114}}), conversions between HTTP versions can also be vectors for vulnerabilities here to creep in. Additionally, a malicious User Agent could force an HTTP/1.1 connection to pollute shared resources (a cache or persistent connection) shared with other User Agents using newer HTTP protocols. Furthermore, the simplicity of HTTP/1.1 and large legacy code bases mean that there is extensive use of HTTP/1.1 in Intermediaries such as reverse proxies in the ecosystem: Origin Servers themselves may have an implementation where an Intermediary proxy fronts application servers, each of which having distinct HTTP implementations potentially from different vendors.
 
+## Threat Model {#threat-model}
+
+This specification is specifically aimed at reducing the cases where a User Agent can influence the behavior between an Intermediary (an Upstream Server) and a Downstream Server (which may be an Origin Server or another Intermediary). Concretely, the following are intended to be defended against:
+
+* T1. The User Agent smuggling a request past an Intermediary (Upstream Server) to a Downstream Server in a way that the Upstream and Downstream Servers become desynchronized on which requests they are processing.
+* T2. The User Agent exploiting desynchronization vulnerabilities to receive the response payload not intended for it (in the case where the Upstream to Downstream Server connection is multiplexed and contains requests beyond just those belonging to the User Agent).
+* T3. The User Agent exploiting smuggling vulnerabilities to get the Downstream Server to process a request bypassing policy enforcements from the Upstream Server
+* T4. The user agent exploiting smuggling vulnerabilities to get the Downstream Server to process a request that includes header fields supplied by a malicious User Agent but which were supposed to have been hop-by-hop headers supplied by the Intermediary (such as those supposedly annotating authentication results).
+* T5. The User Agent exploiting implementation vulnerabilities in the parsing of HTTP/1.1's equivalents of HTTP/2 pseudo-headers (authority, path, and method) to bypass policy controls on an Upstream Server or to get a Downstream Server to differently interpret the request due to smuggled header field or body contents.
+* T6. The User Agent exploiting *this* specification to cause communication failures between an Upstream Server and a Downstream Server for the case where the Downstream Server has implemented this specification but the Upstream Server has not, meaning that the Upstream Server passes through the hop-by-hop headers defined here without removing them.
+
+This specification is NOT intended to defend against:
+
+* N1. Protecting communications between a User Agent and an Intermediary. User Agents are assumed to always be potentially hostile.
+* N2. Acting as a primary security control that obviates the need for proper implementations. It is intended only to act as a secondary stop-gap to mitigate vulnerabilities.
+* N3. Protecting against actors who can intercept, view, or modify communications between the Upstream Server and Downstream Server.
+* N5. Protecting User Agents or Upstream Servers against malicious or compromised Downstream Servers.
+* N4. Protecting against actors who have control over an Upstream Server or a Downstream Server, although this specification may help in some cases to contain attacks where a hostile Upstream Server is communicating to a Downstream Server which in-turn is communicating to another Downstream Server.
+
+
 ## Mitigation Overview
 
-The key concept of this specification is for HTTP/1.1 endpoints (such as an Intermediary and an Origin Server) to be able to share information about their state (e.g., which request/response they think they're parsing) in a way that is cryptographically bound to the hop-by-hop TLS connection. Since the attacker has no access to the key used for the cryptographic binding, this allows the endpoints to detect desynchronization and fail out but without needing changes to the HTTP/1.1 protocol itself. This shared key is then used to authenticate newly introduced hop-by-hop header fields, binding information in those header fields (which includes sequential request/response serial numbers) to the request. Cases where requests or responses do become desynchronized will be detected due to invalid bound header fields (either due to failing to validate or not matching what is expected).
+The key concept of this specification is for HTTP/1.1 endpoints (such as an Intermediary and an Origin Server) to be able to share information about their state (e.g., which request/response they think they're parsing) in a way that is cryptographically bound to the hop-by-hop series of requests (ie, either to the TLS connection or to keying information passed in the first request). Since the attacker has no access to the key used for the cryptographic binding, this allows the endpoints to detect desynchronization and fail out but without needing changes to the HTTP/1.1 protocol itself. This shared key is then used to authenticate newly introduced hop-by-hop header fields, binding information in those header fields (which includes sequential request/response serial numbers) to the request. Cases where requests or responses do become desynchronized will be detected due to invalid bound header fields (either due to failing to validate or not matching what is expected).
 
 While "Request Framing Confusion" attacks (such as HTTP Request Smuggling or HRS) are one of the most common forms of HTTP Processing Discrepancy attacks, other types of attacks such as Host Confusion can also cause problems ({{HTTPSYNC}}). This specification focuses on the former, but as it evolves we may be able to extend the approach taken to defend against other forms of attacks such as Host Confusion and Path Confusion, as well as to protect header fields added by Intermediaries.
 
 *(FOR DISCUSSION: How broadly do we want to scope this specification? How much do we include here, and how much do we leave hooks to enable future extension? At the moment this is intentionally in a middle-ground, and we may either want to simplify or make more general.)*
 
-HTTP endpoints communicating HTTPS over TLS use TLS Exporters to obtain the key used for the binding ({{!RFC8446, Section 7.5}} {{!RFC5705}}), enabling both endpoints of a connection to securely derive this key out-of-band from the request flow in a way that can't be tampered with. The use of Message Binding header fields is also negotiated during the TLS handshake.
+The use of Message Binding header fields is negotiated during the TLS handshake (or may be statically configured for cases where communications between and configuration for the Upstream and Downstream Servers are tightly controlled).
 
-The key used for the binding is abstracted out, so proprietary implementations not using TLS can distribute the key in some other manner, such as in a preface attribute that could be added to the PROXY protocol {{PROXY}}.
+Multiple mechanisms then exist for key exchange:
+
+1) The cipher suite and keying information may be sent as a hop-by-hop header field for the first request on a connection.
+2) HTTP endpoints communicating HTTPS over TLS may use TLS Exporters to obtain the key used for the binding ({{!RFC8446, Section 7.5}} {{!RFC5705}}), enabling both endpoints of a connection to securely derive this key out-of-band from the request flow in a way that can't be tampered with.
+3) As the key used for the binding is abstracted out, proprietary implementations not using TLS can distribute the key in some other manner, such as in a preface attribute that could be added to the PROXY protocol {{PROXY}}.
 
 ## Illustrative Example
 
@@ -120,26 +157,85 @@ The need for a cryptographic binding to the channel between the Intermediary and
 
 {::boilerplate bcp14-tagged}
 
+This document uses terms defined in {{Section 3 of RFC9110}}, including
+"Client", "Server", "Intermediary", "Origin", "upstream", "downstream",
+"inbound", and "outbound".
 
 # Bound Message Header Protocol
 
-This specification introduces new hop-by-hop `Bound-Request` and `Bound-Response` message header fields, which use {{!RFC8941}} structured fields. These header fields convey a request/response Serial number, additional attributes, and a cryptographic binding.
+This specification introduces new hop-by-hop `Bound-Request-Init`, `Bound-Request`, and `Bound-Response` message header fields, which use {{!RFC8941}} structured fields. These header fields convey a request/response Serial number, additional attributes, and a cryptographic binding.
 
 As these are hop-by-hop header fields they are added by the endpoints on the HTTP/1.1 persistent connection ({{!RFC9112}}). Below we refer to the outbound endpoint making the request as the Intermediary ({{!RFC9110, Section 3.7}}) and the inbound endpoint receiving the request and issuing a response as the Downstream Server. The Downstream Server may be either another Intermediary or an Origin Server.
 
-Intermediaries and Downstream Servers MUST NOT exchange `Bound-Request` and `Bound-Response` header fields unless they have mutually negotiated this protocol, either as described below in {{tls-negotiation}} or via some other out-of-band mechanism. If the User Agent and Downstream Server have negotiated using this protocol for a connection, they MUST send a `Bound-Request` and `Bound-Response` header fields in all requests and responses on that connection.
+Intermediaries and Downstream Servers MUST NOT exchange `Bound-Request-Init`, `Bound-Request`, or `Bound-Response` header fields unless they have mutually negotiated this protocol, either as described below in {{tls-negotiation}} or via some other out-of-band mechanism. If the User Agent and Downstream Server have negotiated using this protocol for a connection, the Upstream Server MUST send a `Bound-Request-Init` header field on the first request (and only the first request) on that connection. If the User Agent and Downstream Server have negotiated using this protocol for a connection, they MUST also send `Bound-Request` and `Bound-Response` header fields in all requests and responses on that connection.
 
 ## Request/Response Serials {#serials}
 
 The Request Serial (`$req_serial`) is a counter starting at 1 for the initial request in an HTTP/1.1 persistent connection, and then incrementing by 1 for each subsequent request. The Response Serial (`$resp_serial`) for a response is then reflected back to match the Request Serial from the corresponding request.
 
+## Binding Mechanism {#binding-mechanism}
+
+The Binding Mechanism specifies how the Binding Key is derived as well as the cryptographic function used to bind requests. A list of mechanisms and associated keys is sent by the Upstream Server in its first request in a `Bound-Request-Init` header field.
+
+The server selects one of the offered mechanisms and echoes that choice back on every subsequent `Bound-Response` via a `mechanism` parameter, so that the Upstream Server can unambiguously determine which construction was used for the lifetime of the connection.
+
+The initial registry of mechanism names includes:
+
+* `inband-hmac-sha256` -- HMAC-SHA256 ({{!RFC2104}}) keyed with a 256 bit (32 octet) key value carried inband in the `key` parameter.
+* `exporter-hmac-sha256` -- HMAC-SHA256 using a key derived from a TLS exporter, as described in {{keying-from-tls-exporters}}. The `key` parameter for this mechanism is unused and MUST be omitted, since the actual key comes from the TLS exporter.
+* `inband-siphash` -- SipHash ({{SIPHASH}}) keyed with the 128 bit (16 octet) key value carried inband in the `key` parameter.  This uses SipHash-2-4 with 64 bit (8 octet) output.
+
+Unless explicitly negotiated and configured out-of-band, `inband-hmac-sha256` is mandatory to implement and MUST be used in the Bound-Request for the first request on a connection.
+
+*(TODO: Determine which of these is Mandatory to Implement as well as which to use for the Bound-Request in the first request. It may make sense for the TLS handshake to be able to negotiate `exporter-hmac-sha256` in which case that is the only one used.)*
+
+*(TODO: Add an IANA registry section for these.)*
+
+*(FOR DISCUSSION: Which of these do we want to include? With hardware acceleration, hmac-sha256 may perform close enough to siphash to not be worth including both. We could consider AES-GMAC-128 since the keys must be unique but that has its own risks on nonce reuse so it would be critical that the nonce was a function of direction+serial. Using a non-cryptographic function might reduce the overhead but would make the security properties considerably harder to reason about.)*
+
 ## Binding Key {#binding-key}
 
 The Binding Key is a binary cryptographic value that is associated with the connection. Below we will refer to the binding key for requests as `$req_key` and the binding key for responses as `$resp_key`.
 
-With HTTPS over TLS the binding keys MUST be derived as described in {{keying-from-tls-exporters}}.
+With HTTPS over TLS and `exporter-hmac-sha256` the binding keys MUST be derived as described in {{keying-from-tls-exporters}}.
 
-## Header Specification {#header-spec}
+## Bound-Request-Init Header Specification {#header-spec-init}
+
+The `Bound-Request-Init` header field is sent by the Upstream Server only on the first request of a connection. Its value is a Structured Fields List
+({{!RFC8941}}) whose members are Tokens identifying a
+supported mechanism, each parameterized with an initial key for that
+mechanism.
+
+~~~ abnf
+Bound-Request-Init = 1#mechanism-entry
+
+mechanism-entry     = mechanism-name *( ";" OWS mechanism-param )
+mechanism-name      = sf-token
+mechanism-param     = key-param
+key-param           = "key=" mechanism-key
+mechanism-key       = sf-binary
+~~~
+{: artwork-align="left"}
+
+Where:
+
+* `mechanism-name` is one of the supported mechanisms listed in  {{binding-mechanism}}
+* `mechanism-key` is the corresponding key to use if that mechanism is selected.
+
+An Upstream Server MUST list at least one mechanism, and MAY list more than one mechanism in order of preference, most-preferred first. A client MUST supply a distinct `key` for each mechanism that requires an inband key, and MUST generate these keys using a cryptographically secure random number generator. Keys carried in `Bound-Request-Init` are scoped to the connection on which they are sent and MUST NOT be reused across connections.
+
+For example, a Upstream Server offering all three mechanisms might send:
+
+~~~ example
+Bound-Request-Init: exporter-hmac-sha256, \
+  inband-siphash;key=:AAAAAAAAAAAAAAAAAAAAAA==:, \
+  inband-hmac-sha256;key=:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=:
+~~~
+{: artwork-align="left"}
+
+
+
+## Bound-Request and Bound-Response Header Specification {#header-spec}
 
 The `Bound-Request` and `Bound-Response` header fields are specified as an integer item (the Serial) followed by a parameter list of items.
 
@@ -147,41 +243,56 @@ The ABNF is as follows:
 
 ~~~ abnf
 bound_header      = bound_header_name ":" serial ";" OWS
+                    "mechanism=" mechanism ";" OWS
                     "method=" method ";" OWS
                     "authority=" authority ";" OWS
+                    "path=" path ";" OWS
                     ("response-code" = response_code ";" OWS)?
                     "binding=" binding_value
 bound_header_name = "Bound-Request" | "Bound-Response"
 serial            = sf-integer
+mechanism         = sf-token
 method            = sf-string
 authority         = sf-string
+path              = sf-string
 response_code     = sf-integer
 binding_value     = sf-binary
 ~~~
 
 *(TODO: restructure the ABNF to allow the parameter orders to vary)*
 
-The binding value for a request or response with a given key (`$req_key` or `$resp_key`) is constructed as:
+The binding value for a request or response with a given key is constructed as:
 
 ~~~
-   binding_value = HMAC-SHA256($key, $serial "|" $method "|" authority)
+   binding_value = $function($key,
+                      $serial "|" $direction "|"
+					  $method "|" $authority "|" $path)
 ~~~
 
 In the above:
 
-* `$key` is the `$req_key` or `$resp_key`
 * `$serial` is the request or response serial as a string
+* `$direction` is the string `req` for the `Bound-Request` header
+   or `resp` for `Bound-Response` header
 * `$method` is the HTTP request method associated with the request
-* `$authority` is the authority ((as defined in {{!RFC9110, Section 4.2.3}}) from the normalized URI (as defined in {{!RFC9110, Section 4.2.3}}) for the request  and MUST match the value in the request's Host header field
+* `$authority` is the authority ((as defined in {{!RFC9110, Section 4.2.3}}) from the normalized URI (as defined in {{!RFC9110, Section 4.2.3}}) for the request and MUST match the value in the request's Host header field
+* `$path` is the path ((as defined in {{!RFC9110, Section 4.2.3}}) from the normalized URI (as defined in {{!RFC9110, Section 4.2.3}}) for the request and MUST match the value from the the URI following normalization.
 * `$response_code` is the response code for the response
-* The binding value construct uses HMAC-SHA256 ({{!RFC2104}})
 
-*(TODO: consider whether/how to add crypto agility for other keyed MACs)*
+The `$function` and `$key` for the for `binding_value` varies based on the mechanism:
+
+* For `inband-hmac-sha256`, the `$function` is HMAC-SHA256 ({{!RFC2104}}) keyed with the `key` parameter sent with the `Bound-Request-Init`.
+* For `inband-siphash`, the `$function` is SipHash-2-4 ({{SIPHASH}}) with 64-bit output and keyed with the `key` parameter sent with the `Bound-Request-Init`.
+* For `exporter-hmac-sha256` the `$function` is HMAC-SHA256 using a `$key` derived from a TLS exporter, as described in {{keying-from-tls-exporters}}. The `$key` is either `$req_key` or `$resp_key` depending on if this is a request or response.
+
+
+*(TODO: better specify how to normalize the path and the path matching rules)*
 
 For example, the header field added to the first request on a connection might be:
 
 ~~~
-   Bound-Request: 1; method=POST; authority=www.example.com;
+   Bound-Request: 1; mechanism=inband-hmac-sha256;
+                  method=POST; authority=www.example.com; path="/hello.txt";
                   binding=:yYwktnfv9Ehgr+pvSTu67FuxxMuyCcb8K7tH9m/yrTE=:
 ~~~
 
@@ -196,7 +307,7 @@ The reasons to include attributes into the Message Binding are:
 
 Some options might include:
 
-* Adding the `:path` as a parameter (or adding an attribute indicating that it should be considered included) and also binding it in.
+* Adding the `:path` as a parameter (or adding an attribute indicating that it should be considered included) and also binding it in. This new draft version proposes that, but it is still under-specified.
 * Having a way to more generally encode HTTP/2 pseudoheader field values in a way that is less ambiguous (converted to sf-binary?) and gets bound in.
 * Including a list of header fields to bind in, and then use {{RFC9421}} HTTP Message Signatures or similar to protect them. This would be particularly useful for protecting header fields such as Client-Cert.
 
@@ -204,11 +315,25 @@ Adding more in does add more complexity and has more risks of compatibility issu
 
 ## Intermediary Request Handling {#upstream-req-handling}
 
+Intermediaries which have negotiated this protocol MUST add a `Bound-Request-Init` header field to the first request on a connection listing the mechanisms that it supports.
+
 Intermediaries which have negotiated this protocol MUST add a `Bound-Request` header field with each request they make.  The `$req_serial` MUST start at 1 for the first request on a persistent connection, and MUST be incremented by 1 for each subsequent request.
 
-If the Intermediary is an Intermediary, regardless of whether or not this protocol was negotiated for the connection, it MUST remove any `Bound-Request` header fields that it received (prior to adding its own, if applicable).
+If the Intermediary is an Intermediary, regardless of whether or not this protocol was negotiated for the connection, it MUST remove any `Bound-Request` and `Bound-Request-Init` header fields that it received (prior to adding its own, if applicable).
+
+The mechanism used in the `Bound-Request` header field for the first request on a connection MUST match a mechanism included in the `Bound-Request-Init` header field. This mechanism MUST be one that the Downstream Server is known to support, either as negotiated during the TLS handshake, as the mandatory-to-implement `inband-hmac-sha256`, or statically configured out-of-band.
+
+The mechanism used in all but the first `Bound-Request` header fields MUST match the mechanism returned by the Downstream Server in its first `Bound-Response`.
 
 ## Downstream Server Request Handling {#downstream-req-handling}
+
+A Downstream Server that receives a `Bound-Request-Init` header field MUST select exactly one of the offered mechanisms and reflect that choice on the corresponding and all subsequent `Bound-Response` header fields on the connection. If the Downstream Server does not support any of the offered mechanisms, it MUST terminate the connection.
+
+A Downstream Server MUST terminate the connection if it receives a `Bound-Request-Init` header field on any request other than the first request of a connection.
+
+A Downstream Server MUST terminate the connection if this specification was negotiated but the first request on the connection does not include the `Bound-Request-Init` header field.
+
+A Downstream Server MUST terminate the connection if this specification was NOT negotiated but a `Bound-Request-Init` header field was received in any request.
 
 Downstream Servers which have negotiated this protocol MUST validate the presence and contents of the `Bound-Request` header field prior to processing a request. Any failures MUST be detected early in request processing (such as during request parsing), and Downstream Servers MUST immediately terminate the connection without returning an error response.
 
@@ -217,13 +342,15 @@ Validation checks MUST include:
 * Confirmation that the `Bound-Request` header field is present
 * Confirmation that the cryptographic binding hash matches what was expected
 * Confirmation that the `$req_serial` matches what was expected, starting at 1 for the first request on the connection and incrementing by 1 for each subsequent request
-* Confirmation that the authority and method match those in the request
+* Confirmation that the authority and method and path match those in the request
 
-If the Downstream Server is an Intermediary, it MUST remove the `Bound-Request` header field before constructing a request to the next-hop, regardless of whether this protocol is used for the next-hop.
+If the Server is an Intermediary, it MUST remove the `Bound-Request` and `Bound-Request-Init` header fields before constructing a request to the upstream hop, regardless of whether this protocol was used on the downstream connection.
 
-When constructing a response to the HTTP request the Downstream Server MUST add a `Bound-Response` header field with a `$resp_serial` matching the `$req_serial` of the incoming request.
+When constructing a response to an HTTP request the Downstream Server MUST add a `Bound-Response` header field with a `$resp_serial` matching the `$req_serial` of the incoming request.
 
-If the Downstream Server is an Intermediary, it MUST first remove any `Bound-Response` header fields that it received, regardless of whether this protocol is used on the previous-hop.
+If the Server is an Intermediary, it MUST first remove any `Bound-Response`
+header fields that it received, regardless of whether this protocol was used on
+the upstream connection.
 
 ## Intermediary Response Handling {#upstream-resp-handling}
 
@@ -234,11 +361,11 @@ Validation checks MUST include:
 * Confirmation that the `Bound-Response` header field is present
 * Confirmation that the cryptographic binding MAC matches what was expected
 * Confirmation that the `$resp_serial` matches the `$req_serial` of the request that the response is in-response to.
-* Confirmation that the authority and method match those from the corresponding request
+* Confirmation that the authority and method and path match those from the corresponding request
 * Confirmation that the `$response_code` matches that from the response (or interim response, as discussed in {{handling-1xx}})
 
+The Intermediary MUST remove the `Bound-Response` header field before constructing a response to the downstream connection, regardless of whether this protocol is used for the downstream connection.
 
-The Intermediary MUST remove the `Bound-Response` header field before constructing a response to the previous-hop, regardless of whether this protocol is used for the previous-hop.
 
 ## Handling 100 Continue and 103 Early Hints {#handling-1xx}
 
@@ -256,16 +383,17 @@ Requests which are retried MUST be treated no differently than other forms of re
 
 
 
-# Use with HTTPS over TLS
+# Use with HTTPS over TLS and TLS Exporters
 
 ## Negotiation {#tls-negotiation}
 
-Since the `Bound-Request` header field is hop-by-hop header field it is not safe to send unless the Intermediary knows that recipient supports it, will process it, and then will remove it. Intermediaries and Downstream Servers MUST NOT send `Bound-Request` or `Bound-Response` header fields on connections where they have not negotiated this protocol.
+Since the `Bound-Request` and `Bound-Request-Init` header fields are hop-by-hop header fields they are not safe to send unless the Intermediary knows that recipient supports them, will process them, and then will remove them. Intermediaries and Downstream Servers MUST NOT send `Bound-Request` or `Bound-Request-Init` or `Bound-Response` header fields on connections where they have not negotiated this protocol.
 
 Negotiation needs to happen out-of-band (e.g., at the TLS layer) due to the nature of the attacks this is trying to mitigate.
 
 Options for negotiation include:
 
+* A modification to the ALPN (eg, `http/1.1-bound-inband` or `http/1.1-bound-exporter`). This may be the lowest-effort lift to retrofit into existing legacy HTTP/1.1 applications (which is the target use-case for this specification) as it requires no changes to the TLS library. This is recommended for interop testing of initial experimental implementations.
 * ALPS (stalled/expired) {{I-D.vvv-tls-alps}}
 * TLS Extension Flags (waiting on implementation) {{I-D.ietf-tls-tlsflags}}
 * An all-new TLS extension specific to this purpose, which could also make it easier to version this protocol.
@@ -274,11 +402,11 @@ Note that the first two options only support TLS 1.3 {{!RFC8446}} between the In
 
 It would also be preferable for the mechanism here to negotiate the supported versions of this protocol, such as if cryptographic agility or additional functionality is needed.
 
-Application Protocols (ALPN values, per {{RFC7301}}) other than "http/1.1" are not supported, and a Downstream Server MUST NOT negotiate this Request-Binding protocol when negotiating an application protocol other than "http/1.1".
+Application Protocols (ALPN values, per {{RFC7301}}) other than `http/1.1` are not supported, and a Downstream Server MUST NOT negotiate this Request-Binding protocol when negotiating an application protocol other than `http/1.1`.
 
 ## Key Derivation using TLS Exporters {#keying-from-tls-exporters}
 
-The `$req_key` and `$resp_key` are derived using TLS Exporters.
+When `exporter-hmac-sha256` is used, the `$req_key` and `$resp_key` are derived using TLS Exporters.
 
 * For TLS 1.3 this is specified in {{!RFC8446, Section 7.5}}
 * For TLS 1.2 this is specified in {{!RFC5705}}
@@ -315,7 +443,19 @@ Downstream Servers logging information from detected smuggled requests need to t
 
 ## Use of keys negotiated out-of-band
 
-With the use of TLS Exporters each connection gets a unique pair of `$req_key` and `$resp_key`. If an alternate mechanism is used by proprietary implementations to exchange these keys then they MUST be unique per connection. Otherwise an attacker who can get a request header reflected back from one connection might be able to replay it in another connection.
+With the use of TLS Exporters each connection gets a unique pair of `$req_key` and `$resp_key`. With the use of inband mechanisms, a unique key is sent in the first request on the connection.
+
+If an alternate mechanism is used by proprietary implementations to exchange these keys then they MUST be unique per connection. Otherwise an attacker who can get a request header reflected back from one connection might be able to replay it in another connection.
+
+## Leakage of key communicated inband
+
+When `inband-*` mechanisms are used there is a risk that a Downsteam Server might return back the contents of the `Bound-Request-Init` header. If this were to happen, a malicious User Agent could forge subsequent `Bound-Request` headers and defeat the protections of this specification. Servers implementing this specification MUST take care to not leak the contents of the `Bound-Request-Init` header (such as through diagnostic features or error responses).
+
+The use of `exporter-*` mechanisms defends against this risk and is thus RECOMMENDED given the nature of the vulnerabilities this specification aims to defend against.
+
+## Potentially weak cryptography with SipHash is used
+
+The use of the `inband-siphash` mechanism is only appropriate for the use of this as a secondary defense against implementation vulnerabilities. It is likely NOT appropriate if other information with primary security control properties is bound into the request.
 
 # Privacy considerations
 
