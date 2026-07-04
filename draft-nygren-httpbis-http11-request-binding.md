@@ -252,7 +252,9 @@ Requests which are retried MUST be treated no differently than other forms of re
 
 ## Handling TLS 1.3 Early Data {#tls13-0rtt}
 
-*TODO: define how this works with TLS 1.3 0RTT as it adds additional wrinkles. While this maybe could be made to work there (e.g., using the separate early exporter secret and a distinct space for request\_serials) {{RFC8446}}, we need to ensure that we properly handle situations where an HTTP request spans 0-RTT and 1-RTT data.*
+*TODO: define how this works with TLS 1.3 0RTT as it adds additional wrinkles. While this maybe could be made to work there (e.g., using the separate early exporter secret and potentially a distinct space for request\_serials) {{RFC8446}}, we need to ensure that we properly handle situations where an HTTP request spans 0-RTT and 1-RTT data.*
+
+
 
 # Use with HTTPS over TLS
 
